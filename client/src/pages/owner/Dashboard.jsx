@@ -48,9 +48,20 @@ export default function Dashboard() {
     return new Date(log.check_out) >= todayStart;
   }).length;
 
-  // Use local counts, fallback to API stats
-  const totalCheckInsToday = todayCheckIns || (stats?.today_check_ins ?? 0);
-  const totalCheckOutsToday = todayCheckOuts || (stats?.today_check_outs ?? 0);
+  // Compute Total Revenue Today Calculated (Sum of checked-out earnings today + advance collections)
+  const todayRevenueLocal = auditLedger.reduce((sum, log) => {
+    if (!log.check_out || new Date(log.check_out) < todayStart) return sum;
+    return sum + (Number(log.total_amount) || 0);
+  }, 0);
+
+  const activeAdvanceToday = allRooms.reduce((sum, r) => {
+    if (r.status === 'occupied' && r.active_booking?.check_in && new Date(r.active_booking.check_in) >= todayStart) {
+      return sum + (Number(r.active_booking.advance_amount) || 0);
+    }
+    return sum;
+  }, 0);
+
+  const totalRevenueTodayCalculated = todayRevenueLocal + activeAdvanceToday || (stats?.today_revenue ?? 0);
 
   return (
     <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
@@ -89,11 +100,11 @@ export default function Dashboard() {
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <span className="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">
-                Today's Derived Folio
+                Total Revenue Today Calculated
               </span>
               <div className="flex items-baseline gap-space-xs mt-space-xs">
                 <span className="font-display-sm text-display-sm text-on-surface font-tabular-numeric tracking-tight">
-                  {formatCurrency(stats?.today_revenue ?? 0)}
+                  {formatCurrency(totalRevenueTodayCalculated)}
                 </span>
               </div>
             </div>
@@ -103,10 +114,10 @@ export default function Dashboard() {
           </div>
           <div className="mt-space-md flex items-end justify-between pt-space-xs">
             <span className="font-body-sm text-body-sm text-on-surface-variant">
-              From completed checkouts
+              Checkouts & Advance Receipts
             </span>
             <span className="font-label-md text-label-md text-on-tertiary-container font-semibold">
-              24h Slab Rule Enforced
+              24h Slab Cycle Policy
             </span>
           </div>
         </div>
