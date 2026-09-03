@@ -42,6 +42,79 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGuest, setSelectedGuest] = useState(null);
 
+  // Edit Guest Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGuest, setEditingGuest] = useState(null);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    phone: '',
+    age: '',
+    gender: 'Male',
+    aadhar_number: '',
+    address: '',
+  });
+
+  function openEditModal(guest) {
+    setEditingGuest(guest);
+    setEditForm({
+      full_name: guest.full_name || '',
+      phone: guest.phone || '',
+      age: guest.age || '',
+      gender: guest.gender || 'Male',
+      aadhar_number: guest.aadhar_number || '',
+      address: guest.address || '',
+    });
+    setShowEditModal(true);
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editForm.full_name || !editForm.phone) {
+      return toast.error('Full Name and Phone Number are required');
+    }
+
+    const updatedGuest = {
+      ...editingGuest,
+      full_name: editForm.full_name,
+      phone: editForm.phone,
+      age: editForm.age ? parseInt(editForm.age, 10) : null,
+      gender: editForm.gender,
+      aadhar_number: editForm.aadhar_number,
+      address: editForm.address,
+    };
+
+    // Update remote API if ID is UUID
+    if (editingGuest.id && !editingGuest.id.startsWith('guest-')) {
+      await api.put(`/customers/${editingGuest.id}`, editForm).catch(() => {});
+    }
+
+    // Update local state list
+    setCustomers((prev) =>
+      prev.map((g) => (g.id === editingGuest.id ? updatedGuest : g))
+    );
+
+    if (selectedGuest?.id === editingGuest.id) {
+      setSelectedGuest(updatedGuest);
+    }
+
+    toast.success(`Guest profile for ${editForm.full_name} updated successfully! ✨`);
+    setShowEditModal(false);
+  }
+
+  async function handleDeleteGuest(guest) {
+    if (window.confirm(`Are you sure you want to delete ${guest.full_name} from the guest directory?`)) {
+      if (guest.id && !guest.id.startsWith('guest-')) {
+        await api.delete(`/customers/${guest.id}`).catch(() => {});
+      }
+
+      setCustomers((prev) => prev.filter((g) => g.id !== guest.id));
+      if (selectedGuest?.id === guest.id) {
+        setSelectedGuest(null);
+      }
+      toast.success(`${guest.full_name} removed from guest directory.`);
+    }
+  }
+
   useEffect(() => {
     fetchCustomers();
   }, []);
@@ -310,16 +383,31 @@ export default function CustomersPage() {
                         </td>
 
                         <td className="py-space-sm px-space-md text-right whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedGuest(guest);
-                            }}
-                            className="px-space-xs py-space-xxs rounded bg-surface-container text-on-surface hover:bg-surface-variant font-label-md text-label-md transition-colors"
-                          >
-                            Profile
-                          </button>
+                          <div className="flex items-center justify-end gap-space-xs">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditModal(guest);
+                              }}
+                              className="px-space-xs py-space-xxs rounded bg-surface-container text-on-surface hover:bg-surface-variant font-label-md text-label-md transition-colors border border-surface-container-high/60 cursor-pointer"
+                              title="Edit Guest Details"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteGuest(guest);
+                              }}
+                              className="p-space-xxs rounded text-error hover:bg-error-container/20 transition-colors cursor-pointer"
+                              title="Delete Guest"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -345,13 +433,31 @@ export default function CustomersPage() {
                       .toUpperCase() || 'G'}
                   </div>
                   <div className="flex flex-col">
-                    <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">
                       {selectedGuest.full_name}
                     </h2>
                     <span className="font-label-md text-label-md text-on-tertiary-container font-semibold">
                       Verified Guest Folio
                     </span>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openEditModal(selectedGuest)}
+                    className="px-2 py-1 rounded bg-surface-container hover:bg-surface-variant text-on-surface text-xs font-bold transition-colors cursor-pointer border border-surface-container-high"
+                    type="button"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteGuest(selectedGuest)}
+                    className="p-1 rounded text-error hover:bg-error-container/20 transition-colors cursor-pointer"
+                    title="Delete Guest"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
                 </div>
               </div>
 
@@ -393,6 +499,112 @@ export default function CustomersPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Guest Profile Modal */}
+      {showEditModal && editingGuest && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-space-md">
+          <div className="bg-surface-container-lowest rounded-2xl p-space-xl max-w-lg w-full shadow-2xl border border-surface-container-high/60 flex flex-col gap-space-md">
+            <div className="flex items-center justify-between border-b border-surface-container-high/60 pb-space-sm">
+              <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                Manage & Edit Guest Details
+              </h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1 rounded text-on-surface-variant hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="flex flex-col gap-space-sm">
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  className="px-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-md border border-surface-container-high/60"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-space-sm">
+                <div className="flex flex-col gap-space-xxs">
+                  <label className="font-label-md text-label-md text-on-surface font-medium">Phone Number *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="px-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-tabular-numeric border border-surface-container-high/60"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-space-xxs">
+                  <label className="font-label-md text-label-md text-on-surface font-medium">Age</label>
+                  <input
+                    type="number"
+                    value={editForm.age}
+                    onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
+                    className="px-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-tabular-numeric border border-surface-container-high/60"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-space-sm">
+                <div className="flex flex-col gap-space-xxs">
+                  <label className="font-label-md text-label-md text-on-surface font-medium">Gender</label>
+                  <select
+                    value={editForm.gender}
+                    onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                    className="px-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-md border border-surface-container-high/60"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-space-xxs">
+                  <label className="font-label-md text-label-md text-on-surface font-medium">Aadhaar / ID Number</label>
+                  <input
+                    type="text"
+                    value={editForm.aadhar_number}
+                    onChange={(e) => setEditForm({ ...editForm, aadhar_number: e.target.value })}
+                    className="px-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-tabular-numeric border border-surface-container-high/60"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Permanent Address</label>
+                <textarea
+                  rows={2}
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  className="px-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-md border border-surface-container-high/60 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high/60 mt-space-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-space-lg py-space-xs rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-label-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-space-xl py-space-xs rounded-lg bg-secondary text-on-secondary font-label-md font-bold hover:bg-on-secondary-container"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
