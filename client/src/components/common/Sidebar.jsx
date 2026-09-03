@@ -6,7 +6,7 @@ const ownerSections = [
     title: 'OPERATIONS',
     links: [
       { to: '/rooms', icon: 'grid_view', label: 'Room Management & Grid' },
-      { to: '/', icon: 'desk', label: 'Front Desk & Check-In' },
+      { to: '/', icon: 'desk', label: 'Front Desk Dashboard' },
       { to: '/customers', icon: 'badge', label: 'Guest Directory' },
     ]
   },
