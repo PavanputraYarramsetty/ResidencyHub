@@ -17,12 +17,12 @@ const INITIAL_MOCK_FLOORS = [
     id: 'floor-ground',
     floor_number: 0,
     floor_name: 'Ground Floor',
-    stats: { totalRooms: 5, occupiedRooms: 1, availableRooms: 4, reservedRooms: 0 },
+    stats: { totalRooms: 5, occupiedRooms: 0, availableRooms: 5, reservedRooms: 0 },
     rooms: [
       { id: 'r101', room_number: '101', status: 'available', category_id: 'cat-3', room_categories: MOCK_CATEGORIES[2] },
       { id: 'r102', room_number: '102', status: 'available', category_id: 'cat-3', room_categories: MOCK_CATEGORIES[2] },
       { id: 'r103', room_number: '103', status: 'available', category_id: 'cat-4', room_categories: MOCK_CATEGORIES[3] },
-      { id: 'r104', room_number: '104', status: 'occupied', category_id: 'cat-4', room_categories: MOCK_CATEGORIES[3], active_booking: { id: 'bk-104', customers: { full_name: 'Satyanarayana Murthy', phone: '98480 22338', aadhar_number: '4523 8891 0042' }, check_in: new Date(Date.now() - 4 * 3600000).toISOString(), rate_per_day: 1200, no_of_persons: 2, status: 'checked_in' } },
+      { id: 'r104', room_number: '104', status: 'available', category_id: 'cat-4', room_categories: MOCK_CATEGORIES[3] },
       { id: 'r105', room_number: '105', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
     ]
   },
@@ -30,11 +30,11 @@ const INITIAL_MOCK_FLOORS = [
     id: 'floor-1st',
     floor_number: 1,
     floor_name: '1st Floor',
-    stats: { totalRooms: 6, occupiedRooms: 1, availableRooms: 5, reservedRooms: 0 },
+    stats: { totalRooms: 6, occupiedRooms: 0, availableRooms: 6, reservedRooms: 0 },
     rooms: [
       { id: 'r201', room_number: '201', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
       { id: 'r202', room_number: '202', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
-      { id: 'r203', room_number: '203', status: 'occupied', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1], active_booking: { id: 'bk-203', customers: { full_name: 'K. V. Rao', phone: '94910 08797', aadhar_number: '8821 3340 9912' }, check_in: new Date(Date.now() - 6 * 3600000).toISOString(), rate_per_day: 2000, no_of_persons: 2, status: 'checked_in' } },
+      { id: 'r203', room_number: '203', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
       { id: 'r204', room_number: '204', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
       { id: 'r205', room_number: '205', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
       { id: 'r206', room_number: '206', status: 'available', category_id: 'cat-5', room_categories: MOCK_CATEGORIES[4] },
@@ -282,6 +282,14 @@ export function ResidencyProvider({ children }) {
     });
   }
 
+  // Complete Data Reset — Wipe all bookings, ledgers & restore available rooms
+  function resetAllResidencyData() {
+    localStorage.removeItem('residency_floors');
+    localStorage.removeItem('residency_audit_ledger');
+    setFloors(INITIAL_MOCK_FLOORS);
+    localStorage.setItem('residency_floors', JSON.stringify(INITIAL_MOCK_FLOORS));
+  }
+
   const value = {
     floors,
     categories,
@@ -295,6 +303,7 @@ export function ResidencyProvider({ children }) {
     deleteFloor,
     addRoom,
     deleteRoom,
+    resetAllResidencyData,
   };
 
   return <ResidencyContext.Provider value={value}>{children}</ResidencyContext.Provider>;

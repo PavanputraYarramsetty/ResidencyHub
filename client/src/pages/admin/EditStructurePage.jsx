@@ -13,7 +13,7 @@ const ROOM_CATEGORIES_PRESETS = [
 ];
 
 export default function EditStructurePage() {
-  const { floors, addFloor, deleteFloor, addRoom, deleteRoom } = useResidency();
+  const { floors, addFloor, deleteFloor, addRoom, deleteRoom, resetAllResidencyData } = useResidency();
 
   // Modal States
   const [showAddFloorModal, setShowAddFloorModal] = useState(false);
@@ -113,14 +113,31 @@ export default function EditStructurePage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddFloorModal(true)}
-          className="px-space-lg py-space-sm rounded-lg bg-secondary text-on-secondary font-label-lg hover:bg-on-secondary-container transition-colors flex items-center gap-space-xs shadow-sm cursor-pointer font-bold"
-          type="button"
-        >
-          <span className="material-symbols-outlined text-[20px]">add_location_alt</span>
-          <span>+ Add New Floor Level</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-space-sm">
+          <button
+            onClick={() => {
+              if (window.confirm('Are you sure you want to RESET ALL HOTEL DATA? This will wipe all test bookings, clear checkout ledgers, and set all rooms to available.')) {
+                resetAllResidencyData();
+                toast.success('All hotel test data & room bookings have been completely reset! 🧹');
+              }
+            }}
+            className="px-space-md py-space-sm rounded-lg bg-error-container text-on-error-container hover:bg-error/20 font-label-md text-label-md transition-colors flex items-center gap-space-xs cursor-pointer font-bold border border-error/30"
+            type="button"
+            title="Wipe all bookings & reset room availability"
+          >
+            <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+            <span>Reset All Hotel Data</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddFloorModal(true)}
+            className="px-space-lg py-space-sm rounded-lg bg-secondary text-on-secondary font-label-lg hover:bg-on-secondary-container transition-colors flex items-center gap-space-xs shadow-sm cursor-pointer font-bold"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[20px]">add_location_alt</span>
+            <span>+ Add New Floor Level</span>
+          </button>
+        </div>
       </div>
 
       {/* Structural Floors & Rooms List */}
