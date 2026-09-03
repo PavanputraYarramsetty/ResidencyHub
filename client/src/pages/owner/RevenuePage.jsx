@@ -3,35 +3,7 @@ import api from '../../services/api';
 import { formatCurrency, formatDateTime } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
-const MOCK_REVENUE_ITEMS = [
-  {
-    id: 'rev-101',
-    rooms: { room_number: '102', room_categories: { name: 'Non-AC Single' } },
-    customers: { full_name: 'P. Nageswara Rao', phone: '98480 11223' },
-    check_in: new Date(Date.now() - 28 * 3600000).toISOString(),
-    check_out: new Date(Date.now() - 4 * 3600000).toISOString(),
-    billable_days: 1,
-    total_amount: 800,
-  },
-  {
-    id: 'rev-102',
-    rooms: { room_number: '205', room_categories: { name: 'AC Double' } },
-    customers: { full_name: 'V. S. Murthy', phone: '91234 56789' },
-    check_in: new Date(Date.now() - 50 * 3600000).toISOString(),
-    check_out: new Date(Date.now() - 2 * 3600000).toISOString(),
-    billable_days: 2,
-    total_amount: 4000,
-  },
-  {
-    id: 'rev-103',
-    rooms: { room_number: '303', room_categories: { name: 'Deluxe Suite' } },
-    customers: { full_name: 'G. Suresh Reddi', phone: '94900 44556' },
-    check_in: new Date(Date.now() - 24 * 3600000).toISOString(),
-    check_out: new Date(Date.now() - 1 * 3600000).toISOString(),
-    billable_days: 1,
-    total_amount: 3000,
-  },
-];
+const MOCK_REVENUE_ITEMS = [];
 
 export default function RevenuePage() {
   const [revenueData, setRevenueData] = useState([]);
