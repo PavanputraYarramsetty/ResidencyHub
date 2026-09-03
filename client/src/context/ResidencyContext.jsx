@@ -116,6 +116,8 @@ export function ResidencyProvider({ children }) {
                 customers: {
                   full_name: bookingData.full_name,
                   phone: bookingData.phone,
+                  age: bookingData.age || null,
+                  gender: bookingData.gender || 'Male',
                   aadhar_number: bookingData.aadhar_number,
                   address: bookingData.address,
                 },

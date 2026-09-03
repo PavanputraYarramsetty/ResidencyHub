@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
-import CustomerAutosuggest from './CustomerAutosuggest';
+import { useCustomerSearch } from '../../hooks/useCustomerSearch';
 import { bookingService } from '../../services/bookingService';
 import { useResidency } from '../../context/ResidencyContext';
 import { formatCurrency, formatDateTime } from '../../utils/dateFormat';
@@ -34,6 +34,15 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
   const [noOfDays, setNoOfDays] = useState(1);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
+
+  // Customer search autosuggest states
+  const [nameQuery, setNameQuery] = useState('');
+  const [phoneQuery, setPhoneQuery] = useState('');
+  const [isNameFocused, setIsNameFocused] = useState(false);
+  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
+
+  const { results: fullNameSuggestions, loading: nameLoading } = useCustomerSearch(nameQuery);
+  const { results: phoneSuggestions } = useCustomerSearch(phoneQuery);
 
   // Photo upload states
   const [aadharPhoto, setAadharPhoto] = useState(null);
@@ -117,6 +126,8 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
       markRoomOccupied(activeTargetId, {
         full_name: fullName,
         phone: phone,
+        age: age ? parseInt(age, 10) : null,
+        gender: gender,
         aadhar_number: aadharNumber,
         address: address,
         no_of_persons: parseInt(noOfPersons, 10) || 1,
@@ -274,43 +285,153 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
               </div>
             </div>
 
-            {/* Full Name */}
-            <div className="flex flex-col gap-space-xxs">
-              <label className="font-label-md text-label-md text-on-surface font-medium">
-                Full Name (as per Govt ID) <span className="text-error">*</span>
+            {/* Full Name with Existing Guest Autosuggest Dropdown */}
+            <div className="flex flex-col gap-space-xxs relative">
+              <label className="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
+                <span>Full Name (as per Govt ID) <span className="text-error">*</span></span>
+                {fullNameSuggestions.length > 0 && isNameFocused && (
+                  <span className="text-[11px] text-secondary font-bold flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-[13px]">person_search</span>
+                    {fullNameSuggestions.length} Existing Guest(s) Found
+                  </span>
+                )}
               </label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Satyanarayana Murthy"
-                className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high/60"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onFocus={() => setIsNameFocused(true)}
+                  onBlur={() => setTimeout(() => setIsNameFocused(false), 200)}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    setNameQuery(e.target.value);
+                  }}
+                  placeholder="e.g. Satyanarayana Murthy"
+                  className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high/60"
+                />
+                {nameLoading && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+
+              {/* Suggestions Dropdown for Full Name */}
+              {isNameFocused && fullNameSuggestions.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-surface-container-lowest border border-surface-container-high/80 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-surface-container-high/40">
+                  <div className="px-3 py-1.5 bg-surface-container-low text-[11px] font-bold text-secondary uppercase tracking-wider">
+                    Existing Guests (Click to Autofill)
+                  </div>
+                  {fullNameSuggestions.map((cust, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onMouseDown={() => handleSelectCustomer(cust)}
+                      className="w-full text-left px-3 py-2 hover:bg-surface-container flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
+                          {cust.full_name?.charAt(0) || 'G'}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-on-surface">{cust.full_name}</span>
+                          <span className="text-[11px] text-on-surface-variant font-mono">{cust.phone || '—'}</span>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col text-[11px] text-on-surface-variant">
+                        <span>{cust.gender || 'Male'} • {cust.age ? `${cust.age} yrs` : '—'}</span>
+                        <span className="text-secondary font-semibold">Autofill ➔</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Phone & Age */}
-            <div className="grid grid-cols-3 gap-space-sm">
-              <div className="col-span-2 flex flex-col gap-space-xxs">
-                <label className="font-label-md text-label-md text-on-surface font-medium">
-                  Mobile Number <span className="text-error">*</span>
-                </label>
-                <div className="flex rounded-lg overflow-hidden border border-surface-container-high/60 bg-surface-container-low">
-                  <span className="px-space-sm py-space-sm bg-surface-container font-tabular-numeric text-tabular-numeric text-on-surface-variant flex items-center justify-center text-xs">
-                    +91
+            {/* Phone Number with Autosuggest Dropdown */}
+            <div className="flex flex-col gap-space-xxs relative">
+              <label className="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
+                <span>Mobile Number <span className="text-error">*</span></span>
+                {phoneSuggestions.length > 0 && isPhoneFocused && (
+                  <span className="text-[11px] text-secondary font-bold">
+                    Found {phoneSuggestions.length} match(es)
                   </span>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="98480 22338"
-                    className="w-full px-space-sm py-space-sm bg-surface-container-low text-on-surface font-tabular-numeric text-tabular-numeric focus:outline-none"
-                  />
+                )}
+              </label>
+              <div className="flex rounded-lg overflow-hidden border border-surface-container-high/60 bg-surface-container-low relative">
+                <span className="px-space-sm py-space-sm bg-surface-container font-tabular-numeric text-tabular-numeric text-on-surface-variant flex items-center justify-center text-xs">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onFocus={() => setIsPhoneFocused(true)}
+                  onBlur={() => setTimeout(() => setIsPhoneFocused(false), 200)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setPhoneQuery(e.target.value);
+                  }}
+                  placeholder="98480 22338"
+                  className="w-full px-space-sm py-space-sm bg-surface-container-low text-on-surface font-tabular-numeric text-tabular-numeric focus:outline-none"
+                />
+              </div>
+
+              {/* Suggestions Dropdown for Phone */}
+              {isPhoneFocused && phoneSuggestions.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-surface-container-lowest border border-surface-container-high/80 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-surface-container-high/40">
+                  <div className="px-3 py-1.5 bg-surface-container-low text-[11px] font-bold text-secondary uppercase tracking-wider">
+                    Matching Customer (Click to Autofill)
+                  </div>
+                  {phoneSuggestions.map((cust, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onMouseDown={() => handleSelectCustomer(cust)}
+                      className="w-full text-left px-3 py-2 hover:bg-surface-container flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
+                          {cust.full_name?.charAt(0) || 'G'}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-on-surface">{cust.full_name}</span>
+                          <span className="text-[11px] text-on-surface-variant font-mono">{cust.phone}</span>
+                        </div>
+                      </div>
+                      <span className="text-secondary font-semibold text-xs">Select ➔</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Gender & Age Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+              {/* Gender Selector */}
+              <div className="sm:col-span-2 flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">
+                  Gender <span className="text-error">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-surface-container-high/60">
+                  {['Male', 'Female', 'Other'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender(g)}
+                      className={`py-1 rounded text-center text-xs font-semibold transition-colors cursor-pointer ${
+                        gender === g
+                          ? 'bg-secondary text-on-secondary shadow-xs'
+                          : 'text-on-surface hover:bg-surface-container'
+                      }`}
+                    >
+                      {g === 'Male' ? '👨 Male' : g === 'Female' ? '👩 Female' : '⚧ Other'}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="col-span-1 flex flex-col gap-space-xxs">
+              {/* Age */}
+              <div className="sm:col-span-1 flex flex-col gap-space-xxs">
                 <label className="font-label-md text-label-md text-on-surface font-medium">Age</label>
                 <input
                   type="number"

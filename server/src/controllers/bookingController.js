@@ -65,7 +65,7 @@ async function getBooking(req, res) {
 // POST /api/bookings — Create a new booking
 async function createBooking(req, res) {
   try {
-    let { room_id, customer_id, no_of_persons, booking_date, rate_per_day, full_name, phone, aadhar_number, age, address } = req.body;
+    let { room_id, customer_id, no_of_persons, booking_date, rate_per_day, full_name, phone, aadhar_number, age, gender, address } = req.body;
     const { residency_id } = req.profile;
 
     if (!room_id) {
@@ -92,6 +92,7 @@ async function createBooking(req, res) {
             phone: phone || '',
             aadhar_number: aadhar_number || '',
             age: age || null,
+            gender: gender || 'Male',
             address: address || ''
           })
           .select('id')
