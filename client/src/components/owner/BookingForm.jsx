@@ -22,28 +22,59 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
 
+  // Photo upload states
+  const [aadharPhoto, setAadharPhoto] = useState(null);
+  const [aadharPhotoPreview, setAadharPhotoPreview] = useState(null);
+  const [passportPhoto, setPassportPhoto] = useState(null);
+  const [passportPhotoPreview, setPassportPhotoPreview] = useState(null);
+
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) fetchAvailableRooms();
+    if (isOpen) fetchRooms();
   }, [isOpen]);
 
   useEffect(() => {
     if (preselectedRoomId) setRoomId(preselectedRoomId);
   }, [preselectedRoomId]);
 
-  async function fetchAvailableRooms() {
+  async function fetchRooms() {
     try {
       setLoadingRooms(true);
-      const data = await roomService.getAvailableRooms();
-      setRooms(data || []);
-      if (!roomId && data?.length > 0) {
-        setRoomId(data[0].id);
+      // Fetch all rooms so preselected room is always available
+      const data = await roomService.getAllRooms();
+      const available = data.filter(
+        (r) => r.status === 'available' || r.id === preselectedRoomId
+      );
+      setRooms(available.length > 0 ? available : data);
+
+      if (!roomId && available.length > 0) {
+        setRoomId(available[0].id);
       }
     } catch (err) {
-      console.warn('Failed to load available rooms');
+      console.warn('Failed to load room list');
     } finally {
       setLoadingRooms(false);
+    }
+  }
+
+  // Handle Aadhar photo selection
+  function handleAadharPhotoChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setAadharPhoto(file);
+      setAadharPhotoPreview(URL.createObjectURL(file));
+      toast.success('Aadhaar photo attached');
+    }
+  }
+
+  // Handle Passport photo selection
+  function handlePassportPhotoChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setPassportPhoto(file);
+      setPassportPhotoPreview(URL.createObjectURL(file));
+      toast.success('Passport photo attached');
     }
   }
 
@@ -63,7 +94,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!roomId) return toast.error('Please select a room');
+    if (!roomId) return toast.error('Please select a target room');
     if (!fullName || !phone) return toast.error('Please fill in guest name and phone number');
 
     try {
@@ -80,50 +111,60 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
         advance_amount: advanceAmount ? parseFloat(advanceAmount) : 0,
       });
 
-      toast.success('Instant Check-In completed! Key slip generated ✅');
+      toast.success('Room booked & check-in recorded successfully! ✅');
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Check-In failed');
+      toast.error(err.response?.data?.error || 'Booking failed');
     } finally {
       setSubmitting(false);
     }
   }
 
-  const now = new Date();
-  const dueTomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Instant Check-In & Folio Creator"
-      subtitle="Sridevi Residency • 24-Hour Cycle Ledger"
+      title="Instant Room Booking & Check-In"
+      subtitle="Sridevi Residency • 24-Hour Cycle Ledger Policy"
       size="xl"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-space-md">
-        {/* Instant Lookup Banner */}
+        {/* Instant Guest Search Lookup */}
         <div className="p-space-sm bg-surface-container-low rounded-xl flex items-center justify-between gap-space-md border border-surface-container-high/60">
           <div className="flex-1">
             <CustomerAutosuggest onSelectCustomer={handleSelectCustomer} />
           </div>
         </div>
 
+        {/* 24-Hour Tariff Policy Callout Banner */}
+        <div className="p-space-md rounded-xl bg-secondary-fixed/30 border border-secondary/20 flex items-center gap-space-md">
+          <span className="material-symbols-outlined text-secondary text-[24px]">info</span>
+          <div className="flex flex-col text-body-sm">
+            <span className="font-label-md text-label-md text-on-secondary-fixed-variant uppercase font-bold">
+              24-Hour Flat Tariff Cycle Policy
+            </span>
+            <span className="text-on-surface-variant">
+              Guests staying for 1 min, 2 hours, 3 hours, or up to 24 hours are charged the full 24-hour cycle tariff.
+            </span>
+          </div>
+        </div>
+
         {/* Two-Column ERP Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-xl pt-space-xs">
-          {/* Column 1: Guest Personal & Residence Details */}
+          {/* Column 1: Primary Guest Details */}
           <div className="flex flex-col gap-space-md">
             <div className="flex items-center justify-between pb-space-xs border-b border-surface-container-high/60">
               <span className="font-label-md text-label-md text-secondary uppercase font-bold tracking-wider flex items-center gap-space-xs">
                 <span className="material-symbols-outlined text-[16px]">person</span>
-                1. Primary Guest Details
+                1. Guest & Room Details
               </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">* Mandatory Govt Fields</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">* Required Fields</span>
             </div>
 
-            {/* Room Selection */}
+            {/* Target Room Selection */}
             <div className="flex flex-col gap-space-xxs">
-              <label className="font-label-md text-label-md text-on-surface font-medium">Select Target Room *</label>
+              <label className="font-label-md text-label-md text-on-surface font-medium">Selected Room *</label>
               <select
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
@@ -131,8 +172,6 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
               >
                 {loadingRooms ? (
                   <option>Loading available units...</option>
-                ) : rooms.length === 0 ? (
-                  <option value="">No vacant rooms available</option>
                 ) : (
                   rooms.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -193,7 +232,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
 
             {/* Occupancy Stepper */}
             <div className="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low border border-surface-container-high/60">
-              <span className="font-label-md text-label-md text-on-surface">Adult Guest Count</span>
+              <span className="font-label-md text-label-md text-on-surface">No of Persons (Adults)</span>
               <div className="flex items-center gap-space-xs">
                 <button
                   type="button"
@@ -207,7 +246,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
                 </span>
                 <button
                   type="button"
-                  onClick={() => setNoOfPersons(Math.min(4, noOfPersons + 1))}
+                  onClick={() => setNoOfPersons(Math.min(6, noOfPersons + 1))}
                   className="w-7 h-7 rounded bg-surface-container-lowest text-on-surface flex items-center justify-center font-bold text-headline-sm hover:bg-surface-container shadow-xs cursor-pointer"
                 >
                   +
@@ -230,15 +269,15 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
             </div>
           </div>
 
-          {/* Column 2: Identity Proof, Live 24-Hour Cycle & Settlement */}
+          {/* Column 2: Photo Uploads, KYC & Advance Payment */}
           <div className="flex flex-col gap-space-md">
             <div className="flex items-center justify-between pb-space-xs border-b border-surface-container-high/60">
               <span className="font-label-md text-label-md text-secondary uppercase font-bold tracking-wider flex items-center gap-space-xs">
                 <span className="material-symbols-outlined text-[16px]">badge</span>
-                2. KYC & Billing Parameters
+                2. KYC Documents & Photo Verification
               </span>
               <span className="font-label-md text-label-md text-on-tertiary-container bg-surface-container-highest px-space-sm py-0.5 rounded font-semibold">
-                Form-F Ready
+                Form-F Compliant
               </span>
             </div>
 
@@ -256,36 +295,72 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
               />
             </div>
 
-            {/* 24-Hour Cycle Live Clock Box */}
-            <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex flex-col gap-space-xs shadow-sm">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-space-xs">
-                  <span className="w-2 h-2 rounded-full bg-secondary-container animate-pulse" />
-                  <span className="font-label-md text-label-md text-surface-variant uppercase tracking-wider font-semibold">
-                    24-Hour Tariff Rule
-                  </span>
-                </div>
-                <span className="font-tabular-numeric text-tabular-numeric text-secondary-fixed">Cycle #01</span>
+            {/* Document Photo Upload Inputs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+              {/* Aadhaar Card Photo */}
+              <div className="p-space-sm rounded-xl bg-surface-container-low border border-surface-container-high/60 flex flex-col gap-space-xs">
+                <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-secondary">credit_card</span>
+                  Aadhaar Card Photo
+                </span>
+                {aadharPhotoPreview ? (
+                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-surface-container-high">
+                    <img src={aadharPhotoPreview} alt="Aadhaar preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAadharPhoto(null);
+                        setAadharPhotoPreview(null);
+                      }}
+                      className="absolute top-1 right-1 p-1 bg-surface/80 rounded-full text-on-surface hover:text-error"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-outline-variant hover:border-secondary rounded-lg cursor-pointer transition-colors bg-surface-container-lowest">
+                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant">add_a_photo</span>
+                    <span className="text-[11px] text-on-surface-variant font-medium mt-1">Upload Aadhaar</span>
+                    <input type="file" accept="image/*" onChange={handleAadharPhotoChange} className="hidden" />
+                  </label>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-space-md pt-space-xs">
-                <div className="flex flex-col">
-                  <span className="font-body-sm text-body-sm text-surface-variant">Check-In Timestamp</span>
-                  <span className="font-tabular-numeric text-tabular-numeric text-on-primary font-bold">
-                    {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Now)
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-body-sm text-body-sm text-surface-variant">Cycle Auto-Renewal / Due</span>
-                  <span className="font-tabular-numeric text-tabular-numeric text-secondary-container font-bold">
-                    Tomorrow, {dueTomorrow.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
+
+              {/* Passport Photo */}
+              <div className="p-space-sm rounded-xl bg-surface-container-low border border-surface-container-high/60 flex flex-col gap-space-xs">
+                <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-secondary">account_box</span>
+                  Passport Photo
+                </span>
+                {passportPhotoPreview ? (
+                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-surface-container-high">
+                    <img src={passportPhotoPreview} alt="Passport preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPassportPhoto(null);
+                        setPassportPhotoPreview(null);
+                      }}
+                      className="absolute top-1 right-1 p-1 bg-surface/80 rounded-full text-on-surface hover:text-error"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-outline-variant hover:border-secondary rounded-lg cursor-pointer transition-colors bg-surface-container-lowest">
+                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant">portrait</span>
+                    <span className="text-[11px] text-on-surface-variant font-medium mt-1">Upload Photo</span>
+                    <input type="file" accept="image/*" onChange={handlePassportPhotoChange} className="hidden" />
+                  </label>
+                )}
               </div>
             </div>
 
             {/* Advance Payment Collection */}
             <div className="flex flex-col gap-space-xs">
-              <label className="font-label-md text-label-md text-on-surface font-medium">Advance Deposit Collection (₹)</label>
+              <label className="font-label-md text-label-md text-on-surface font-medium">
+                Advance Payment (Paid by UPI / Cash / Card)
+              </label>
               <div className="grid grid-cols-3 gap-space-sm">
                 <div className="col-span-1">
                   <div className="flex rounded-lg overflow-hidden border border-surface-container-high/60 bg-surface-container-low">
@@ -308,7 +383,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
                       key={mode}
                       type="button"
                       onClick={() => setPaymentMode(mode)}
-                      className={`flex-1 py-space-xs rounded-md font-label-md text-label-md transition-colors ${
+                      className={`flex-1 py-space-xs rounded-md font-label-md text-label-md transition-colors cursor-pointer ${
                         paymentMode === mode
                           ? 'bg-secondary text-on-secondary font-bold shadow-xs'
                           : 'text-on-surface-variant hover:text-on-surface'
@@ -331,7 +406,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
               <div className="flex items-center gap-space-xs font-tabular-numeric text-tabular-numeric">
                 <span className="font-bold text-on-surface">24h Tariff: {formatCurrency(roomPrice)}</span>
                 <span className="text-outline-variant">•</span>
-                <span className="text-on-tertiary-container font-bold">Advance: {formatCurrency(advanceAmount || 0)}</span>
+                <span className="text-on-tertiary-container font-bold">Advance Paid: {formatCurrency(advanceAmount || 0)}</span>
               </div>
             </div>
           </div>
@@ -354,7 +429,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
               ) : (
                 <span className="material-symbols-outlined text-[18px]">verified_user</span>
               )}
-              <span>Confirm Check-In & Key Slip</span>
+              <span>Confirm Booking & Check-In</span>
             </button>
           </div>
         </div>
