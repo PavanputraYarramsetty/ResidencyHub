@@ -32,16 +32,6 @@ export default function Login() {
     }
   }
 
-  function fillTestCredentials(type) {
-    if (type === 'admin') {
-      setEmail('admin@sridevi.com');
-      setPassword('AdminPassword@123');
-    } else {
-      setEmail('owner@sridevi.com');
-      setPassword('OwnerPassword@123');
-    }
-  }
-
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-space-md">
       <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-xl border border-surface-container-high/60 overflow-hidden flex flex-col p-space-xl gap-space-lg">
@@ -54,32 +44,6 @@ export default function Login() {
           <p className="font-body-md text-body-md text-on-surface-variant">
             Lodge Management & 24-Hour Billing Portal
           </p>
-        </div>
-
-        {/* Test Credentials Reference Callout */}
-        <div className="p-space-md rounded-xl bg-surface-container-low border border-surface-container-high/60 flex flex-col gap-space-xs">
-          <span className="font-label-md text-label-md text-secondary uppercase font-bold tracking-wider flex items-center gap-1">
-            <span className="material-symbols-outlined text-[16px]">key</span>
-            Authorized System Credentials
-          </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-xs text-body-sm pt-1">
-            <button
-              type="button"
-              onClick={() => fillTestCredentials('owner')}
-              className="p-space-xs rounded-lg bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high/60 text-left transition-colors cursor-pointer"
-            >
-              <div className="font-label-md text-label-md text-on-surface font-bold">Owner Access</div>
-              <div className="text-[11px] text-on-surface-variant font-mono">owner@sridevi.com</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => fillTestCredentials('admin')}
-              className="p-space-xs rounded-lg bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high/60 text-left transition-colors cursor-pointer"
-            >
-              <div className="font-label-md text-label-md text-on-surface font-bold">Admin Access</div>
-              <div className="text-[11px] text-on-surface-variant font-mono">admin@sridevi.com</div>
-            </button>
-          </div>
         </div>
 
         {/* Form */}
