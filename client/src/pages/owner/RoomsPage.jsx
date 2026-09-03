@@ -37,16 +37,35 @@ export default function RoomsPage() {
     }
   }
 
-  // Filter rooms
+  // Filter rooms by floor, category (e.g. AC, Non-AC, Deluxe, exact category id/name), and search query
   const filteredFloors = floors
     .map((f) => {
       if (selectedFloorId !== 'all' && f.id !== selectedFloorId) return null;
 
       const filteredRooms = (f.rooms || []).filter((r) => {
         // Category filter
-        if (selectedCategory !== 'all' && r.category_id !== selectedCategory) {
-          return false;
+        if (selectedCategory !== 'all') {
+          const catId = r.category_id || r.room_categories?.id;
+          const catName = r.room_categories?.name || '';
+          
+          if (selectedCategory === 'ac_all') {
+            // Match any AC category
+            if (!catName.toLowerCase().includes('ac') || catName.toLowerCase().includes('non-ac')) {
+              return false;
+            }
+          } else if (selectedCategory === 'non_ac_all') {
+            // Match any Non-AC category
+            if (!catName.toLowerCase().includes('non-ac') && !catName.toLowerCase().includes('non ac')) {
+              return false;
+            }
+          } else if (
+            catId !== selectedCategory &&
+            catName.toLowerCase() !== selectedCategory.toLowerCase()
+          ) {
+            return false;
+          }
         }
+
         // Search query
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
@@ -62,13 +81,17 @@ export default function RoomsPage() {
     })
     .filter(Boolean);
 
-  // Extract unique categories across rooms for selector
-  const categoriesMap = new Map();
-  allRooms.forEach((r) => {
-    if (r.room_categories) {
-      categoriesMap.set(r.room_categories.id, r.room_categories.name);
-    }
-  });
+  // Extract all categories available in the residency
+  const residencyCategories = [
+    { id: 'all', name: 'All Categories' },
+    { id: 'ac_all', name: '⚡ All AC Rooms' },
+    { id: 'non_ac_all', name: '🌿 All Non-AC Rooms' },
+    { id: 'cat-1', name: 'AC Single (₹1,500/24h)' },
+    { id: 'cat-2', name: 'AC Double (₹2,000/24h)' },
+    { id: 'cat-3', name: 'Non-AC Single (₹800/24h)' },
+    { id: 'cat-4', name: 'Non-AC Double (₹1,200/24h)' },
+    { id: 'cat-5', name: 'Deluxe Suite (₹3,000/24h)' },
+  ];
 
   return (
     <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
@@ -154,12 +177,11 @@ export default function RoomsPage() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none bg-surface-container-low text-on-surface font-label-md text-label-md pl-space-md pr-space-xl py-space-xs rounded-lg focus:outline-none cursor-pointer"
+                className="appearance-none bg-surface-container-low text-on-surface font-label-md text-label-md pl-space-md pr-space-xl py-space-xs rounded-lg focus:outline-none cursor-pointer border border-surface-container-high/60 font-medium"
               >
-                <option value="all">Category: All Tariffs</option>
-                {Array.from(categoriesMap.entries()).map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
+                {residencyCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
                   </option>
                 ))}
               </select>
