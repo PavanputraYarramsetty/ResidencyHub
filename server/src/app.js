@@ -38,8 +38,13 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/revenue', revenueRoutes);
 
+const fs = require('fs');
+
 // Serve frontend static build files in production
-const clientBuildPath = path.resolve(__dirname, '../../client/dist');
+const clientBuildPath = fs.existsSync(path.resolve(process.cwd(), 'client/dist'))
+  ? path.resolve(process.cwd(), 'client/dist')
+  : path.resolve(__dirname, '../../client/dist');
+
 app.use(express.static(clientBuildPath));
 
 // Fallback all non-API GET requests to frontend SPA index.html
@@ -47,7 +52,12 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' });
   }
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+  const indexPath = path.join(clientBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Frontend build not found. Please run npm run build.');
+  }
 });
 
 // Global error handler
