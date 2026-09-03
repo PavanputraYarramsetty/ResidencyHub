@@ -9,6 +9,7 @@ export default function RevenuePage() {
   const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('30days');
+  const [invoiceItem, setInvoiceItem] = useState(null);
 
   useEffect(() => {
     fetchRevenue();
@@ -305,10 +306,16 @@ export default function RevenuePage() {
                       {formatCurrency(item.total_amount || 0)}
                     </td>
                     <td className="py-space-md px-space-lg text-center">
-                      <span className="inline-flex items-center gap-space-xxs px-space-xs py-space-xxs rounded bg-surface-container-highest text-on-tertiary-container font-label-md text-label-md font-bold">
-                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                        <span>Settled</span>
-                      </span>
+                      <div className="flex items-center justify-center gap-space-xs">
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceItem(item)}
+                          className="px-space-md py-space-xs rounded bg-secondary text-on-secondary hover:bg-on-secondary-container font-label-md text-label-md font-bold transition-colors shadow-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">print</span>
+                          <span>Generate Bill</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -317,6 +324,116 @@ export default function RevenuePage() {
           </table>
         </div>
       </div>
+
+      {/* Invoice Modal for Specific Checkout Instance */}
+      {invoiceItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-space-md">
+          <div className="bg-surface-container-lowest rounded-2xl p-space-xl max-w-2xl w-full shadow-2xl border border-surface-container-high/60 flex flex-col gap-space-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-surface-container-high/60 pb-space-sm">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-[24px]">receipt_long</span>
+                <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                  Tax Invoice / Guest Bill
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInvoiceItem(null)}
+                className="p-1 rounded text-on-surface-variant hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Printable Tax Invoice Content */}
+            <div className="flex flex-col gap-space-lg p-space-md bg-white text-slate-900 border border-slate-200 rounded-xl font-sans" id="revenue-printable-invoice">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b pb-space-md border-slate-200">
+                <div className="flex flex-col">
+                  <h1 className="font-display-sm text-display-sm text-slate-950 font-bold">
+                    SRIDEVI RESIDENCY
+                  </h1>
+                  <span className="text-xs font-semibold text-slate-500">LODGE & HOTEL MANAGEMENT</span>
+                  <span className="text-xs text-slate-500">Main Road, Rajahmundry, AP • GSTIN: 37AAAAA0000A1Z5</span>
+                </div>
+                <div className="text-right flex flex-col">
+                  <span className="font-bold text-sm text-slate-900 uppercase">OFFICIAL TAX INVOICE</span>
+                  <span className="text-xs text-slate-500">Inv #: SR-INV-{invoiceItem.id?.slice(-6) || '1001'}</span>
+                  <span className="text-xs text-slate-500">Date: {invoiceItem.check_out ? new Date(invoiceItem.check_out).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              {/* Particulars Grid */}
+              <div className="grid grid-cols-2 gap-space-md text-xs border-b pb-space-md border-slate-200">
+                <div>
+                  <span className="font-bold text-slate-500 uppercase block mb-1">Guest Particulars</span>
+                  <div>Name: <strong>{invoiceItem.customers?.full_name || 'Guest'}</strong></div>
+                  <div>Phone: <strong>{invoiceItem.customers?.phone || '—'}</strong></div>
+                  <div>Govt ID / Aadhaar: <strong>{invoiceItem.customers?.aadhar_number || '—'}</strong></div>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-500 uppercase block mb-1">Stay Particulars</span>
+                  <div>Room Unit: <strong>Room {invoiceItem.rooms?.room_number || 'Unit'} ({invoiceItem.rooms?.room_categories?.name || 'Standard'})</strong></div>
+                  <div>Check-In: <strong>{invoiceItem.check_in ? formatDateTime(invoiceItem.check_in) : '—'}</strong></div>
+                  <div>Check-Out: <strong>{invoiceItem.check_out ? formatDateTime(invoiceItem.check_out) : '—'}</strong></div>
+                  <div>Billable Duration: <strong>{invoiceItem.billable_days || 1} Day(s) (24h Cycle)</strong></div>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 uppercase font-bold">
+                    <th className="py-2 px-3">Description</th>
+                    <th className="py-2 px-3 text-right">Cycle Slabs</th>
+                    <th className="py-2 px-3 text-right">Settled Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono">
+                  <tr>
+                    <td className="py-2 px-3 font-sans">
+                      Room {invoiceItem.rooms?.room_number} Occupancy Tariff ({invoiceItem.billable_days || 1} Day(s))
+                    </td>
+                    <td className="py-2 px-3 text-right">{invoiceItem.billable_days || 1} Slab(s)</td>
+                    <td className="py-2 px-3 text-right font-bold">{formatCurrency(invoiceItem.total_amount || 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Totals & Sign */}
+              <div className="flex items-center justify-between pt-space-md border-t border-slate-200">
+                <div className="flex flex-col text-xs text-slate-500">
+                  <span>Payment Mode: <strong>{invoiceItem.payment_mode || 'UPI / Cash'}</strong></span>
+                  <span>Status: <strong className="text-emerald-700">SETTLED & PAID IN FULL</strong></span>
+                </div>
+                <div className="text-right flex flex-col">
+                  <span className="text-xs text-slate-400 mb-6">Authorized Signatory</span>
+                  <span className="font-bold text-xs text-slate-900 border-t border-slate-300 pt-1">Sridevi Residency Front Desk</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-space-sm pt-space-sm border-t border-surface-container-high/60">
+              <button
+                type="button"
+                onClick={() => setInvoiceItem(null)}
+                className="px-space-lg py-space-xs rounded bg-surface-container hover:bg-surface-variant text-on-surface font-label-md"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-space-xl py-space-xs rounded bg-secondary text-on-secondary font-label-md font-bold hover:bg-on-secondary-container flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[18px]">print</span>
+                <span>Print Bill</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
