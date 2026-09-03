@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -55,7 +55,7 @@ export default function Login() {
         <div className="p-space-md rounded-xl bg-surface-container-low border border-surface-container-high/60 flex flex-col gap-space-xs">
           <span className="font-label-md text-label-md text-secondary uppercase font-bold tracking-wider flex items-center gap-1">
             <span className="material-symbols-outlined text-[16px]">key</span>
-            Test Credentials
+            Authorized System Credentials
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-xs text-body-sm pt-1">
             <button
@@ -130,12 +130,9 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="text-center">
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Need an account?{' '}
-            <Link to="/signup" className="font-bold text-secondary hover:underline">
-              Create account
-            </Link>
+        <div className="text-center pt-1 border-t border-surface-container-high/40">
+          <p className="font-label-md text-label-md text-on-surface-variant">
+            Private System — Authorized Personnel Only
           </p>
         </div>
       </div>
