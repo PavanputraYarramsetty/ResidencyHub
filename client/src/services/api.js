@@ -15,14 +15,10 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Handle auth errors globally
+// Handle API responses
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired — redirect to login
-      window.location.href = '/login';
-    }
     return Promise.reject(error);
   }
 );
