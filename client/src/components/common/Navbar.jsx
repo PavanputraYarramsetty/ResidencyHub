@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useResidency } from '../../context/ResidencyContext';
 import LiveClock from './LiveClock';
-import { Hotel, LogOut, User, Shield, Menu, X } from 'lucide-react';
+import { Hotel, LogOut, Shield, Menu, X } from 'lucide-react';
 
 export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
   const { profile, signOut, isAdmin } = useAuth();
@@ -19,81 +19,81 @@ export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
   return (
     <header className="sticky top-0 z-40 w-full glass-header">
       <div className="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Left: Mobile Toggle & Brand Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
               className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               aria-label="Toggle Navigation"
             >
-              {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
 
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
-                <Hotel className="w-5 h-5 text-slate-950 stroke-[2.2]" />
+            <Link to="/" className="flex items-center gap-3.5 group">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-sm group-hover:scale-105 transition-all flex-shrink-0">
+                <Hotel className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-base font-extrabold tracking-tight text-slate-900 leading-none">
-                    SRIDEVI RESIDENCY
-                  </h1>
-                </div>
-                <p className="text-[10px] font-semibold tracking-wider text-amber-700 uppercase mt-0.5">
-                  Lodge Management
+              <div className="space-y-0.5">
+                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-normal leading-tight">
+                  SRIDEVI RESIDENCY
+                </h1>
+                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
+                  Hotel & Lodge Management
                 </p>
               </div>
             </Link>
           </div>
 
           {/* Center: Live Clock + Property Status */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-5">
             <LiveClock />
 
             {/* Quick Occupancy Summary Pill */}
             {totalRooms > 0 && (
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <strong className="text-slate-900">{availableRooms}</strong> Available
+              <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-full bg-slate-100 border border-slate-200/80 text-xs font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5 text-emerald-700 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  {availableRooms} Available
                 </span>
-                <span className="text-slate-300">•</span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <strong className="text-slate-900">{occupiedRooms}</strong> Occupied
+                <span className="text-slate-300 font-normal">|</span>
+                <span className="flex items-center gap-1.5 text-rose-700 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  {occupiedRooms} Occupied
                 </span>
               </div>
             )}
           </div>
 
           {/* Right: Role Switcher & User Profile */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             {isAdmin && (
               <Link
                 to={isAdminArea ? '/' : '/admin'}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                   isAdminArea
                     ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
                     : 'bg-slate-900 text-amber-300 border border-slate-800 hover:bg-slate-800 shadow-sm'
                 }`}
               >
-                <Shield className="w-3.5 h-3.5" />
+                <Shield className="w-4 h-4" />
                 <span>{isAdminArea ? 'Owner Mode' : 'Admin Panel'}</span>
               </Link>
             )}
 
             {/* User Chip */}
-            <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
-              <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-700 font-bold text-xs flex items-center justify-center">
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-800 font-extrabold text-xs flex items-center justify-center">
                 {profile?.full_name?.charAt(0) || 'U'}
               </div>
-              <span className="text-xs font-semibold text-slate-800 hidden sm:inline max-w-[120px] truncate">
-                {profile?.full_name || 'Owner'}
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase bg-slate-200 text-slate-700">
-                {profile?.role || 'owner'}
-              </span>
+              <div className="hidden sm:block text-left">
+                <p className="text-xs font-bold text-slate-900 leading-tight">
+                  {profile?.full_name || 'Owner'}
+                </p>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                  {profile?.role || 'owner'}
+                </p>
+              </div>
             </div>
 
             {/* Logout */}
@@ -102,7 +102,7 @@ export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
               className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all"
               title="Sign Out"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>

@@ -1,59 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
-   Sridevi Residency — Luxury Hospitality Design System
-   Royal Navy + Warm Champagne Gold + Polished Slate
+   Sridevi Residency — Hospitality Design System
+   Refined Spacing, High Contrast, Luxury Color Hierarchy
    ============================================================ */
 
 :root {
-  /* Brand Primary - Deep Royal Navy */
-  --brand-950: #0B132B;
-  --brand-900: #111C44;
-  --brand-850: #162456;
-  --brand-800: #1C2E6C;
-  --brand-700: #253D8C;
-  --brand-600: #3251B5;
-  --brand-500: #4364D8;
-  --brand-100: #E8EDFF;
-  --brand-50:  #F4F6FF;
-
-  /* Luxury Champagne Gold */
-  --gold-700: #8D6B18;
-  --gold-600: #B88B22;
-  --gold-500: #D4A838;
-  --gold-400: #E8BF53;
-  --gold-300: #F3D57F;
-  --gold-100: #FEF8E7;
-  --gold-50:  #FFFDF7;
-
-  /* Room Status System */
-  --status-available:       #059669;
-  --status-available-bg:    #ECFDF5;
-  --status-available-border:#A7F3D0;
-  --status-available-glow:  rgba(16, 185, 129, 0.25);
-
-  --status-occupied:        #DC2626;
-  --status-occupied-bg:     #FEF2F2;
-  --status-occupied-border: #FECACA;
-  --status-occupied-glow:   rgba(239, 68, 68, 0.25);
-
-  --status-reserved:        #D97706;
-  --status-reserved-bg:     #FFFBEB;
-  --status-reserved-border: #FDE68A;
-  --status-reserved-glow:   rgba(245, 158, 11, 0.25);
-
   /* Surface Neutrals */
   --bg-page:   #F8FAFC;
   --bg-card:   #FFFFFF;
   --border-subtle: #E2E8F0;
   --border-medium: #CBD5E1;
   --text-main: #0F172A;
-  --text-muted:#64748B;
-  --text-light:#94A3B8;
+  --text-muted:#475569;
+  --text-light:#64748B;
 }
 
-/* Base resets & typography */
+/* Base resets & typography — strictly prevent text collision */
 * {
   margin: 0;
   padding: 0;
@@ -64,19 +28,27 @@ html, body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-page);
   color: var(--text-main);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: #0F172A;
 }
 
-/* Custom Luxury Scrollbars */
+p, span, div, label {
+  line-height: 1.55;
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
   background: #F1F5F9;
@@ -89,67 +61,89 @@ h1, h2, h3, h4, h5, h6 {
   background: #94A3B8;
 }
 
-/* Premium Shadows & Elevation */
+/* Surface & Brand fallbacks for full compatibility */
+.bg-surface-50  { background-color: #F8FAFC !important; }
+.bg-surface-100 { background-color: #F1F5F9 !important; }
+.bg-surface-200 { background-color: #E2E8F0 !important; }
+.bg-surface-800 { background-color: #1E293B !important; }
+.bg-surface-900 { background-color: #0F172A !important; }
+
+.text-surface-400 { color: #94A3B8 !important; }
+.text-surface-500 { color: #64748B !important; }
+.text-surface-600 { color: #475569 !important; }
+.text-surface-700 { color: #334155 !important; }
+.text-surface-800 { color: #1E293B !important; }
+.text-surface-900 { color: #0F172A !important; }
+
+.border-surface-100 { border-color: #F1F5F9 !important; }
+.border-surface-200 { border-color: #E2E8F0 !important; }
+.border-surface-300 { border-color: #CBD5E1 !important; }
+
+.bg-brand-50  { background-color: #F8FAFC !important; }
+.bg-brand-100 { background-color: #F1F5F9 !important; }
+.bg-brand-600 { background-color: #0F172A !important; }
+.bg-brand-700 { background-color: #0B132B !important; }
+.bg-brand-900 { background-color: #0B132B !important; }
+.bg-brand-950 { background-color: #0B132B !important; }
+
+.text-brand-500 { color: #D97706 !important; }
+.text-brand-600 { color: #0F172A !important; }
+.text-brand-700 { color: #0F172A !important; }
+
+/* Shadows */
 .shadow-luxury-sm {
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .shadow-luxury {
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 6px 24px -2px rgba(15, 23, 42, 0.07), 0 2px 8px -1px rgba(15, 23, 42, 0.04);
 }
 
 .shadow-luxury-lg {
-  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.1), 0 6px 16px -2px rgba(15, 23, 42, 0.05);
 }
 
 .shadow-gold {
-  box-shadow: 0 8px 24px -4px rgba(212, 168, 56, 0.35);
+  box-shadow: 0 6px 20px -2px rgba(217, 119, 6, 0.3);
 }
 
-/* Glass & Card Surfaces */
+/* Glass Header */
 .glass-header {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  border-bottom: 1px solid #E2E8F0;
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(226, 232, 240, 0.7);
-}
-
-/* Luxury Room Card State Styling */
+/* Room Card States */
 .room-card-available {
   background: #FFFFFF;
-  border: 1.5px solid #A7F3D0;
+  border: 1.5px solid #6EE7B7;
   box-shadow: 0 4px 16px -2px rgba(16, 185, 129, 0.08);
 }
 .room-card-available:hover {
   border-color: #059669;
-  box-shadow: 0 10px 25px -3px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 10px 25px -3px rgba(16, 185, 129, 0.18);
 }
 
 .room-card-occupied {
   background: #FFFFFF;
-  border: 1.5px solid #FECACA;
+  border: 1.5px solid #FCA5A5;
   box-shadow: 0 4px 16px -2px rgba(239, 68, 68, 0.08);
 }
 .room-card-occupied:hover {
   border-color: #DC2626;
-  box-shadow: 0 10px 25px -3px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 10px 25px -3px rgba(239, 68, 68, 0.18);
 }
 
 .room-card-reserved {
   background: #FFFFFF;
-  border: 1.5px solid #FDE68A;
+  border: 1.5px solid #FCD34D;
   box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.08);
 }
 .room-card-reserved:hover {
   border-color: #D97706;
-  box-shadow: 0 10px 25px -3px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 10px 25px -3px rgba(245, 158, 11, 0.18);
 }
 
 /* Pulsing Badge Indicators */
@@ -171,15 +165,4 @@ h1, h2, h3, h4, h5, h6 {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
   70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-
-/* Skeleton Loading Shimmer */
-.skeleton-shimmer {
-  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
-  background-size: 200% 100%;
-  animation: shimmer-anim 1.5s ease-in-out infinite;
-}
-@keyframes shimmer-anim {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 }
