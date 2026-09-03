@@ -1,58 +1,65 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { useEffect } from 'react';
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+export default function Modal({ isOpen, onClose, title, subtitle, children, size = 'md' }) {
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   const sizeClasses = {
     sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    md: 'max-w-xl',
+    lg: 'max-w-3xl',
+    xl: 'max-w-5xl',
     full: 'max-w-6xl',
-  };
+  }[size] || 'max-w-2xl';
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
-          />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-inverse-surface/60 backdrop-blur-xs">
+      {/* Backdrop click */}
+      <div className="absolute inset-0" onClick={onClose} />
 
-          {/* Modal Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-            className={`relative w-full ${sizeClasses[size]} bg-white rounded-3xl shadow-luxury-lg max-h-[90vh] flex flex-col border border-slate-200 overflow-hidden`}
-          >
-            {/* Header */}
-            {title && (
-              <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-slate-50/50">
-                <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-normal">
-                  {title}
-                </h2>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-200/60 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-7">
-              {children}
+      {/* Modal Container Card */}
+      <div
+        className={`relative w-full ${sizeClasses} max-h-[92vh] bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-surface-container-high animate-in fade-in zoom-in-95 duration-150 z-10`}
+      >
+        {/* Modal Header */}
+        <div className="px-space-xl py-space-md bg-primary-container text-on-primary flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-space-sm">
+            <div className="w-9 h-9 rounded-lg bg-secondary text-on-secondary flex items-center justify-center font-bold">
+              <span className="material-symbols-outlined text-[20px]">sensor_door</span>
             </div>
-          </motion.div>
+            <div className="flex flex-col">
+              <h3 className="font-headline-md text-headline-md font-bold leading-tight text-on-primary">
+                {title || 'Sridevi Residency'}
+              </h3>
+              <span className="font-label-md text-label-md text-on-primary-container">
+                {subtitle || 'Lodge Management • 24-Hour Cycle'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="text-on-primary-container hover:text-on-primary p-space-xs rounded-lg transition-colors cursor-pointer"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
         </div>
-      )}
-    </AnimatePresence>
+
+        {/* Modal Body */}
+        <div className="p-space-xl overflow-y-auto flex-1 text-on-surface">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }

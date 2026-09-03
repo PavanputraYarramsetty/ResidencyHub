@@ -1,384 +1,253 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useResidency } from '../../context/ResidencyContext';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
-import { DoorOpen, Plus, Trash2, Tags, BedDouble, Users, Wind } from 'lucide-react';
 import { formatCurrency } from '../../utils/dateFormat';
+import toast from 'react-hot-toast';
 
 export default function ManageRooms() {
-  const { floors, categories, refreshFloors, refreshCategories } = useResidency();
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddRoom, setShowAddRoom] = useState(false);
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [roomForm, setRoomForm] = useState({ room_number: '', floor_id: '', category_id: '' });
-  const [catForm, setCatForm] = useState({ name: '', base_price: '', max_occupancy: 2 });
+  const { floors, categories, refreshData } = useResidency();
   const [activeTab, setActiveTab] = useState('rooms');
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
+  // New Room State
+  const [roomNumber, setRoomNumber] = useState('');
+  const [floorId, setFloorId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
 
-  async function fetchRooms() {
-    try {
-      setLoading(true);
-      const { data } = await api.get('/rooms');
-      setRooms(data || []);
-    } catch (err) {
-      console.warn('Rooms fetch warning — using local floor room data');
-      const list = [];
-      floors.forEach((f) => {
-        (f.rooms || []).forEach((r) => list.push({ ...r, floors: f }));
-      });
-      setRooms(list);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // New Category State
+  const [catName, setCatName] = useState('');
+  const [catPrice, setCatPrice] = useState('');
+  const [catMax, setCatMax] = useState('2');
+
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (floors.length > 0 && !floorId) setFloorId(floors[0].id);
+    if (categories.length > 0 && !categoryId) setCategoryId(categories[0].id);
+  }, [floors, categories]);
 
   async function handleAddRoom(e) {
     e.preventDefault();
-    if (!roomForm.room_number || !roomForm.floor_id || !roomForm.category_id) {
-      return toast.error('Please fill in room number, floor, and category');
-    }
+    if (!roomNumber || !floorId || !categoryId) return toast.error('Please fill in all room fields');
+
     try {
-      await api.post('/rooms', roomForm);
-      toast.success(`Room ${roomForm.room_number} added successfully ✅`);
-      setShowAddRoom(false);
-      setRoomForm({ room_number: '', floor_id: '', category_id: '' });
-      fetchRooms();
-      refreshFloors();
+      setSubmitting(true);
+      await api.post('/rooms', {
+        room_number: roomNumber,
+        floor_id: floorId,
+        category_id: categoryId,
+      });
+      toast.success(`Room ${roomNumber} added!`);
+      setRoomNumber('');
+      refreshData();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to add room');
-    }
-  }
-
-  async function handleDeleteRoom(id, number) {
-    if (!confirm(`Delete Room ${number}? This action cannot be undone.`)) return;
-    try {
-      await api.delete(`/rooms/${id}`);
-      toast.success(`Room ${number} removed`);
-      fetchRooms();
-      refreshFloors();
-    } catch (err) {
-      toast.error('Failed to delete room');
+    } finally {
+      setSubmitting(false);
     }
   }
 
   async function handleAddCategory(e) {
     e.preventDefault();
-    if (!catForm.name || !catForm.base_price) {
-      return toast.error('Please provide category name and base price');
-    }
+    if (!catName || !catPrice) return toast.error('Please fill in category name and price');
+
     try {
-      await api.post('/rooms/categories', {
-        ...catForm,
-        base_price: Number(catForm.base_price),
-        max_occupancy: Number(catForm.max_occupancy),
+      setSubmitting(true);
+      await api.post('/categories', {
+        name: catName,
+        base_price: parseFloat(catPrice),
+        max_occupancy: parseInt(catMax, 10) || 2,
       });
-      toast.success(`Category "${catForm.name}" created ✅`);
-      setShowAddCategory(false);
-      setCatForm({ name: '', base_price: '', max_occupancy: 2 });
-      refreshCategories();
+      toast.success(`Category "${catName}" created!`);
+      setCatName('');
+      setCatPrice('');
+      refreshData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to add category');
+      toast.error(err.response?.data?.error || 'Failed to create category');
+    } finally {
+      setSubmitting(false);
     }
   }
-
-  async function handleDeleteCategory(id, name) {
-    if (!confirm(`Delete category "${name}"? Rooms linked to it may lose their category styling.`)) return;
-    try {
-      await api.delete(`/rooms/categories/${id}`);
-      toast.success(`Category "${name}" removed`);
-      refreshCategories();
-    } catch (err) {
-      toast.error('Failed to delete category');
-    }
-  }
-
-  // Group rooms by floor
-  const roomsByFloor = {};
-  rooms.forEach((r) => {
-    const floorName = r.floors?.floor_name || 'Ground Floor';
-    if (!roomsByFloor[floorName]) roomsByFloor[floorName] = [];
-    roomsByFloor[floorName].push(r);
-  });
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600">
-              <DoorOpen className="w-6 h-6" />
+    <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 mt-space-md">
+        <div className="flex flex-col gap-space-xxs">
+          <div className="flex items-center gap-space-xs">
+            <span className="font-label-md text-label-md uppercase tracking-wider text-secondary">
+              Inventory & Rate Configuration
             </span>
-            Rooms & Category Catalog
-          </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Configure room numbers, 24-hour tariff rates, guest capacity & amenities
-          </p>
+          </div>
+          <h1 className="font-display-sm text-display-sm text-on-surface">Manage Rooms & Tariff Slabs</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant">Configure room inventory and category base pricing</p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-start sm:self-auto">
+        <div className="flex items-center bg-surface-container p-space-xxs rounded-xl shadow-inner">
           <button
             onClick={() => setActiveTab('rooms')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-colors ${
               activeTab === 'rooms'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-primary-container text-on-primary shadow-sm font-semibold'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
+            type="button"
           >
-            Manage Rooms ({rooms.length})
+            Room Units
           </button>
           <button
             onClick={() => setActiveTab('categories')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-colors ${
               activeTab === 'categories'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-primary-container text-on-primary shadow-sm font-semibold'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
+            type="button"
           >
-            Tariff Slabs ({categories.length})
+            Tariff Categories
           </button>
         </div>
       </div>
 
-      {/* Tab 1: Rooms */}
-      {activeTab === 'rooms' && (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500">
-              Building Room Inventory
-            </h2>
-            <button
-              onClick={() => setShowAddRoom(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 shadow-gold hover:from-amber-300 hover:to-amber-400 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Room</span>
-            </button>
+      {activeTab === 'rooms' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+          <div className="lg:col-span-4 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
+            <h2 className="font-headline-md text-headline-md text-on-surface">Add New Room Unit</h2>
+            <form onSubmit={handleAddRoom} className="flex flex-col gap-space-md">
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Room Number *</label>
+                <input
+                  type="text"
+                  required
+                  value={roomNumber}
+                  onChange={(e) => setRoomNumber(e.target.value)}
+                  placeholder="e.g. 106, 204"
+                  className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none border border-surface-container-high/60"
+                />
+              </div>
+
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Building Floor Level *</label>
+                <select
+                  value={floorId}
+                  onChange={(e) => setFloorId(e.target.value)}
+                  className="w-full bg-surface-container-low text-on-surface font-body-md text-body-md p-space-sm rounded-lg focus:outline-none border border-surface-container-high/60 cursor-pointer"
+                >
+                  {floors.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.floor_name} (Level {f.floor_number})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Tariff Category *</label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full bg-surface-container-low text-on-surface font-body-md text-body-md p-space-sm rounded-lg focus:outline-none border border-surface-container-high/60 cursor-pointer"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} — ({formatCurrency(c.base_price)}/24h)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="py-space-sm px-space-md rounded-lg bg-secondary text-on-secondary font-label-lg hover:bg-on-secondary-container transition-colors shadow-sm flex items-center justify-center gap-space-xs cursor-pointer disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                <span>Add Room Unit</span>
+              </button>
+            </form>
           </div>
 
-          {/* Add Room Inline Form */}
-          {showAddRoom && (
-            <motion.form
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onSubmit={handleAddRoom}
-              className="bg-white rounded-2xl border border-amber-200/90 p-5 shadow-luxury space-y-4"
-            >
-              <h3 className="text-sm font-bold text-slate-900">Add New Hotel Room</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Room Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={roomForm.room_number}
-                    onChange={(e) => setRoomForm({ ...roomForm, room_number: e.target.value })}
-                    placeholder="e.g. 101, 204"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Floor Level *</label>
-                  <select
-                    required
-                    value={roomForm.floor_id}
-                    onChange={(e) => setRoomForm({ ...roomForm, floor_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-700 outline-none"
-                  >
-                    <option value="">Select Floor Level</option>
-                    {floors.map((fl) => (
-                      <option key={fl.id} value={fl.id}>{fl.floor_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Category & Tariff *</label>
-                  <select
-                    required
-                    value={roomForm.category_id}
-                    onChange={(e) => setRoomForm({ ...roomForm, category_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-700 outline-none"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({formatCurrency(c.base_price)}/24h)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddRoom(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 shadow-sm"
-                >
-                  Save Unit
-                </button>
-              </div>
-            </motion.form>
-          )}
-
-          {/* Rooms Grouped by Floor */}
-          <div className="space-y-6">
-            {Object.entries(roomsByFloor).map(([floorName, floorRooms]) => (
-              <div key={floorName} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-luxury-sm space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    {floorName}
-                  </h3>
-                  <span className="text-xs font-bold text-slate-500">{floorRooms.length} Units</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {floorRooms.map((r) => {
-                    const cat = r.room_categories || {};
-                    return (
-                      <div
-                        key={r.id}
-                        className="group relative rounded-xl border border-slate-200/80 p-3 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-sm transition-all"
-                      >
-                        <div className="flex items-start justify-between">
-                          <span className="text-lg font-black text-slate-900">{r.room_number}</span>
-                          <button
-                            onClick={() => handleDeleteRoom(r.id, r.room_number)}
-                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Delete Room"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-600 truncate mt-1">{cat.name || 'Standard'}</p>
-                        <p className="text-[10px] font-extrabold text-amber-700">
-                          {cat.base_price ? formatCurrency(cat.base_price) : '—'}
-                        </p>
-                      </div>
-                    );
-                  })}
+          <div className="lg:col-span-8 flex flex-col gap-space-md">
+            {floors.map((f) => (
+              <div key={f.id} className="p-space-lg rounded-xl bg-surface-container-lowest border border-surface-container-high/60 shadow-sm flex flex-col gap-space-sm">
+                <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">{f.floor_name}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-space-sm">
+                  {(f.rooms || []).map((r) => (
+                    <div key={r.id} className="p-space-sm rounded-lg bg-surface-container-low border border-surface-container-high/40 flex flex-col">
+                      <span className="font-tabular-numeric text-headline-sm font-bold text-on-surface">
+                        Room {r.room_number}
+                      </span>
+                      <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
+                        {r.room_categories?.name}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+          <div className="lg:col-span-4 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
+            <h2 className="font-headline-md text-headline-md text-on-surface">Add Tariff Category</h2>
+            <form onSubmit={handleAddCategory} className="flex flex-col gap-space-md">
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  placeholder="e.g. AC Suite, Deluxe Double"
+                  className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none border border-surface-container-high/60"
+                />
+              </div>
 
-      {/* Tab 2: Categories */}
-      {activeTab === 'categories' && (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500">
-              Configured Room Categories
-            </h2>
-            <button
-              onClick={() => setShowAddCategory(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 shadow-gold hover:from-amber-300 hover:to-amber-400 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Category</span>
-            </button>
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">24h Base Price (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  value={catPrice}
+                  onChange={(e) => setCatPrice(e.target.value)}
+                  placeholder="1500"
+                  className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-tabular-numeric text-tabular-numeric focus:outline-none border border-surface-container-high/60"
+                />
+              </div>
+
+              <div className="flex flex-col gap-space-xxs">
+                <label className="font-label-md text-label-md text-on-surface font-medium">Max Occupancy</label>
+                <input
+                  type="number"
+                  value={catMax}
+                  onChange={(e) => setCatMax(e.target.value)}
+                  placeholder="2"
+                  className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-tabular-numeric text-tabular-numeric focus:outline-none border border-surface-container-high/60"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="py-space-sm px-space-md rounded-lg bg-secondary text-on-secondary font-label-lg hover:bg-on-secondary-container transition-colors shadow-sm flex items-center justify-center gap-space-xs cursor-pointer disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                <span>Create Tariff Category</span>
+              </button>
+            </form>
           </div>
 
-          {showAddCategory && (
-            <motion.form
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onSubmit={handleAddCategory}
-              className="bg-white rounded-2xl border border-amber-200/90 p-5 shadow-luxury space-y-4"
-            >
-              <h3 className="text-sm font-bold text-slate-900">Add Room Category Slab</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Category Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={catForm.name}
-                    onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
-                    placeholder="e.g. Deluxe Suite"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Base Price / 24h (INR) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={catForm.base_price}
-                    onChange={(e) => setCatForm({ ...catForm, base_price: e.target.value })}
-                    placeholder="e.g. 2500"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Max Occupancy *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={catForm.max_occupancy}
-                    onChange={(e) => setCatForm({ ...catForm, max_occupancy: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddCategory(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 shadow-sm"
-                >
-                  Save Category
-                </button>
-              </div>
-            </motion.form>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-space-md">
             {categories.map((c) => (
-              <div
-                key={c.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-luxury-sm flex items-center justify-between hover:border-slate-300 transition-all"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-bold">
-                    <Tags className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900">{c.name}</h3>
-                    <p className="text-xs font-black text-amber-600">{formatCurrency(c.base_price)} / 24h</p>
-                    <p className="text-[11px] text-slate-400 font-medium">Max {c.max_occupancy || 2} Guests</p>
-                  </div>
+              <div key={c.id} className="p-space-lg rounded-xl bg-surface-container-lowest border border-surface-container-high/60 shadow-sm flex flex-col justify-between gap-space-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-headline-sm text-headline-sm text-on-surface font-bold">{c.name}</span>
+                  <span className="font-tabular-numeric text-headline-sm text-secondary font-bold">
+                    {formatCurrency(c.base_price)}/24h
+                  </span>
                 </div>
-
-                <button
-                  onClick={() => handleDeleteCategory(c.id, c.name)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                  title="Delete Category"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  Max Capacity: {c.max_occupancy || 2} Persons
+                </span>
               </div>
             ))}
           </div>

@@ -1,263 +1,177 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { bookingService } from '../../services/bookingService';
-import { formatDateTime, formatCurrency } from '../../utils/dateFormat';
-import Loader from '../../components/common/Loader';
-import {
-  BarChart3, Download, Calendar, Filter,
-  ChevronLeft, ChevronRight, Hash, FileSpreadsheet, CheckCircle, Clock, XCircle
-} from 'lucide-react';
+import api from '../../services/api';
+import { formatCurrency, formatDateTime } from '../../utils/dateFormat';
+import toast from 'react-hot-toast';
 
 export default function StatisticsPage() {
-  const [bookings, setBookings] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', from_date: '', to_date: '' });
-  const limit = 20;
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchBookings();
-  }, [page, filters]);
+    fetchLogs();
+  }, []);
 
-  async function fetchBookings() {
+  async function fetchLogs() {
     try {
       setLoading(true);
-      const params = {
-        page,
-        limit,
-        ...(filters.status && { status: filters.status }),
-        ...(filters.from_date && { from_date: filters.from_date }),
-        ...(filters.to_date && { to_date: filters.to_date }),
-      };
-      const data = await bookingService.getBookings(params);
-      setBookings(data.bookings || []);
-      setTotal(data.total || 0);
+      const { data } = await api.get('/bookings/revenue');
+      setLogs(data || []);
     } catch (err) {
-      console.warn('Failed to fetch booking statistics');
+      toast.error('Failed to load audit logs');
     } finally {
       setLoading(false);
     }
   }
 
-  function exportCSV() {
-    if (!bookings.length) return;
-    const headers = ['Room', 'Floor', 'Category', 'Customer', 'Phone', 'Check-In', 'Check-Out', 'Billable Days', 'Amount (INR)', 'Status'];
-    const rows = bookings.map((b) => [
-      b.rooms?.room_number || '',
-      b.rooms?.floors?.floor_name || '',
-      b.rooms?.room_categories?.name || '',
-      b.customers?.full_name || '',
-      b.customers?.phone || '',
-      b.check_in || '',
-      b.check_out || '',
-      b.billable_days || '',
-      b.total_amount || '',
-      b.status || '',
-    ]);
+  const filteredLogs = logs.filter((log) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      log.rooms?.room_number?.toString().includes(q) ||
+      log.customers?.full_name?.toLowerCase().includes(q) ||
+      log.customers?.phone?.includes(q)
+    );
+  });
 
-    const csvContent = [headers, ...rows].map((e) => e.map((val) => `"${val}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+  function handleExportAuditCSV() {
+    if (!logs.length) return toast.error('No audit logs to export');
+    const headers = ['Booking ID', 'Room Number', 'Guest Name', 'Phone', 'Check-In', 'Check-Out', 'Billable Days', 'Total Amount'];
+    const rows = logs.map((l) => [
+      l.id,
+      l.rooms?.room_number || '',
+      `"${l.customers?.full_name || ''}"`,
+      `"${l.customers?.phone || ''}"`,
+      formatDateTime(l.check_in),
+      formatDateTime(l.check_out),
+      l.billable_days || 1,
+      l.total_amount || 0,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `Sridevi_Residency_Logs_${new Date().toISOString().split('T')[0]}.csv`;
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Sridevi_Residency_Audit_Log_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+    toast.success('Audit log exported to CSV! 📄');
   }
 
-  const totalPages = Math.ceil(total / limit) || 1;
-
-  const statusBadges = {
-    checked_out: { label: 'Checked Out', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    checked_in: { label: 'Active Stay', bg: 'bg-rose-50 text-rose-700 border-rose-200' },
-    booked: { label: 'Reserved', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
-    cancelled: { label: 'Cancelled', bg: 'bg-slate-100 text-slate-600 border-slate-200' },
-  };
-
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
+    <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600">
-              <BarChart3 className="w-6 h-6" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 mt-space-md">
+        <div className="flex flex-col gap-space-xxs">
+          <div className="flex items-center gap-space-xs">
+            <span className="font-label-md text-label-md uppercase tracking-wider text-secondary">
+              Fiscal Governance & Audit
             </span>
-            Booking Audit Logs & History
+            <span className="w-1 h-1 rounded-full bg-outline-variant" />
+            <span className="font-label-md text-label-md text-on-surface-variant flex items-center gap-space-xxs">
+              <span className="material-symbols-outlined text-[14px] text-on-tertiary-container">verified</span>
+              Immutable Records
+            </span>
+          </div>
+          <h1 className="font-display-sm text-display-sm text-on-surface">
+            Audit Logs & Historical Stay Ledger
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Permanent, tamper-proof history of all reservations, timestamps & computed billings
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Permanent record of completed stays, 24-hour tariff calculation history, and audit compliance data.
           </p>
         </div>
 
-        <button
-          onClick={exportCSV}
-          disabled={bookings.length === 0}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 shadow-gold hover:from-amber-300 hover:to-amber-400 disabled:opacity-50 transition-all self-start sm:self-auto"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Export to CSV</span>
-        </button>
-      </div>
-
-      {/* Filter Controls Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <select
-            value={filters.status}
-            onChange={(e) => {
-              setFilters({ ...filters, status: e.target.value });
-              setPage(1);
-            }}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 text-slate-700 outline-none"
+        <div className="flex items-center gap-space-sm">
+          <button
+            onClick={handleExportAuditCSV}
+            className="flex items-center gap-space-xs px-space-md py-space-sm bg-secondary text-on-secondary rounded-lg font-label-lg text-label-lg shadow-sm hover:bg-on-secondary-container transition-colors cursor-pointer"
+            type="button"
           >
-            <option value="">All Booking Statuses</option>
-            <option value="checked_out">Checked Out (Billed)</option>
-            <option value="checked_in">Checked In (Active)</option>
-            <option value="booked">Booked (Upcoming)</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-
-          <div className="flex items-center gap-2 text-xs font-medium">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <input
-              type="date"
-              value={filters.from_date}
-              onChange={(e) => {
-                setFilters({ ...filters, from_date: e.target.value });
-                setPage(1);
-              }}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-700"
-            />
-            <span className="text-slate-400">to</span>
-            <input
-              type="date"
-              value={filters.to_date}
-              onChange={(e) => {
-                setFilters({ ...filters, to_date: e.target.value });
-                setPage(1);
-              }}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-700"
-            />
-          </div>
-        </div>
-
-        <div className="text-xs font-bold text-slate-500">
-          Total Logs: <strong className="text-slate-900">{total}</strong>
+            <span className="material-symbols-outlined text-[18px]">file_download</span>
+            <span>Export Audit Log</span>
+          </button>
         </div>
       </div>
 
-      {/* Audit Log Table */}
-      {loading ? (
-        <Loader type="table" count={8} />
-      ) : bookings.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-sm">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-4">
-            <BarChart3 className="w-8 h-8 opacity-50" />
-          </div>
-          <h3 className="text-base font-bold text-slate-900">No booking records found</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            Bookings will appear in this permanent audit log automatically as guests check in and check out.
-          </p>
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high/60">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
+            search
+          </span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by Room # or Guest Name..."
+            className="w-full pl-9 pr-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:bg-surface-container placeholder:text-on-surface-variant"
+          />
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-luxury-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 sm:px-6">Room / Unit</th>
-                  <th className="py-3.5 px-4 font-semibold">Guest Contact</th>
-                  <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Check-In Time</th>
-                  <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Check-Out Time</th>
-                  <th className="py-3.5 px-4 font-semibold text-center">24h Slabs</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Total Billed</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high/60 overflow-hidden flex flex-col">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left font-body-md text-body-md text-on-surface">
+            <thead className="bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase tracking-wider border-b border-surface-container-high/60">
+              <tr>
+                <th className="py-space-sm px-space-lg">Room Unit</th>
+                <th className="py-space-sm px-space-lg">Primary Guest</th>
+                <th className="py-space-sm px-space-lg">Check-In Timestamp</th>
+                <th className="py-space-sm px-space-lg">Check-Out Timestamp</th>
+                <th className="py-space-sm px-space-lg text-right">24h Billable Slabs</th>
+                <th className="py-space-sm px-space-lg text-right">Derived Bill Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container-high/40">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-on-surface-variant">
+                    <div className="w-6 h-6 border-2 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    Loading audit records...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bookings.map((b) => {
-                  const badge = statusBadges[b.status] || { label: b.status, bg: 'bg-slate-100 text-slate-700' };
-
-                  return (
-                    <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Room info */}
-                      <td className="py-3.5 px-4 sm:px-6 font-extrabold text-slate-900">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">Room {b.rooms?.room_number || '—'}</span>
-                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
-                            {b.rooms?.room_categories?.name || 'Standard'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                          {b.rooms?.floors?.floor_name || 'Ground'}
-                        </p>
-                      </td>
-
-                      {/* Customer */}
-                      <td className="py-3.5 px-4">
-                        <p className="font-extrabold text-slate-900">{b.customers?.full_name || 'Guest'}</p>
-                        <p className="text-[11px] text-slate-500 font-mono">{b.customers?.phone || '—'}</p>
-                      </td>
-
-                      {/* Check-In */}
-                      <td className="py-3.5 px-4 text-slate-600 hidden md:table-cell font-mono text-[11px]">
-                        {formatDateTime(b.check_in)}
-                      </td>
-
-                      {/* Check-Out */}
-                      <td className="py-3.5 px-4 text-slate-600 hidden md:table-cell font-mono text-[11px]">
-                        {b.check_out ? formatDateTime(b.check_out) : <span className="text-slate-400 italic">In progress</span>}
-                      </td>
-
-                      {/* Billable Days */}
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-800">
-                        {b.billable_days ? `${b.billable_days} day(s)` : '—'}
-                      </td>
-
-                      {/* Total Amount */}
-                      <td className="py-3.5 px-4 text-right font-black text-slate-900 text-sm">
-                        {b.total_amount ? formatCurrency(b.total_amount) : '—'}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${badge.bg}`}>
-                          {badge.label}
+              ) : filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-on-surface-variant">
+                    No historical audit logs found.
+                  </td>
+                </tr>
+              ) : (
+                filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-surface-container-low transition-colors">
+                    <td className="py-space-md px-space-lg font-bold text-headline-sm text-on-surface">
+                      Room {log.rooms?.room_number || 'Unit'}
+                    </td>
+                    <td className="py-space-md px-space-lg">
+                      <div className="flex flex-col">
+                        <span className="font-label-lg text-label-lg text-on-surface">
+                          {log.customers?.full_name || 'Guest'}
                         </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-600">
-              <span>Showing Page {page} of {totalPages}</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+                        <span className="font-body-sm text-body-sm text-on-surface-variant">
+                          {log.customers?.phone || '—'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-space-md px-space-lg font-tabular-numeric text-on-surface">
+                      {formatDateTime(log.check_in)}
+                    </td>
+                    <td className="py-space-md px-space-lg font-tabular-numeric text-on-surface">
+                      {formatDateTime(log.check_out)}
+                    </td>
+                    <td className="py-space-md px-space-lg text-right font-tabular-numeric font-bold">
+                      {log.billable_days || 1} Slab(s) (24h)
+                    </td>
+                    <td className="py-space-md px-space-lg text-right font-tabular-numeric text-headline-sm text-secondary font-bold">
+                      {formatCurrency(log.total_amount || 0)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 }

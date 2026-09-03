@@ -12,18 +12,17 @@ function AppLayout() {
   const location = useLocation();
   const isAuthPage = ['/login', '/signup'].includes(location.pathname);
 
-  // Responsive sidebar state
+  // Responsive sidebar drawer state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 font-semibold tracking-wide text-sm">
+      <div className="flex items-center justify-center min-h-screen bg-surface">
+        <div className="flex flex-col items-center gap-space-sm">
+          <div className="w-10 h-10 border-4 border-surface-container-high border-t-secondary rounded-full animate-spin" />
+          <span className="font-label-lg text-label-lg text-on-surface">
             Loading Sridevi Residency...
-          </p>
+          </span>
         </div>
       </div>
     );
@@ -35,25 +34,23 @@ function AppLayout() {
 
   return (
     <ResidencyProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-        {/* Global Luxury Header */}
-        <Navbar
-          mobileSidebarOpen={mobileSidebarOpen}
-          setMobileSidebarOpen={setMobileSidebarOpen}
+      <div className="min-h-screen bg-surface font-body-md text-on-surface antialiased">
+        {/* Fixed Left Sidebar */}
+        <Sidebar
+          mobileOpen={mobileSidebarOpen}
+          setMobileOpen={setMobileSidebarOpen}
         />
 
-        {/* Content Layout */}
-        <div className="flex flex-1 w-full max-w-[1680px] mx-auto">
-          {/* Sidebar */}
-          <Sidebar
-            mobileOpen={mobileSidebarOpen}
-            setMobileOpen={setMobileSidebarOpen}
-            collapsed={sidebarCollapsed}
-            setCollapsed={setSidebarCollapsed}
+        {/* Outer Wrapper with Sidebar Padding */}
+        <div className="lg:pl-sidebar-width">
+          {/* Fixed Top Header */}
+          <Navbar
+            mobileSidebarOpen={mobileSidebarOpen}
+            setMobileSidebarOpen={setMobileSidebarOpen}
           />
 
-          {/* Main Page Area */}
-          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 transition-all">
+          {/* Main View Area */}
+          <main className="relative pt-header-height w-full min-h-screen bg-surface">
             <AppRoutes />
           </main>
         </div>
@@ -70,19 +67,19 @@ export default function App() {
         toastOptions={{
           duration: 4000,
           style: {
-            borderRadius: '14px',
-            background: '#0F172A',
-            color: '#F8FAFC',
+            borderRadius: '8px',
+            background: '#131b2e',
+            color: '#ffffff',
             fontSize: '13px',
+            fontFamily: 'Inter, sans-serif',
             fontWeight: '600',
-            boxShadow: '0 10px 30px -4px rgba(0, 0, 0, 0.2)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
           },
           success: {
-            iconTheme: { primary: '#10B981', secondary: '#FFFFFF' },
+            iconTheme: { primary: '#069669', secondary: '#FFFFFF' },
           },
           error: {
-            iconTheme: { primary: '#EF4444', secondary: '#FFFFFF' },
+            iconTheme: { primary: '#ba1a1a', secondary: '#FFFFFF' },
           },
         }}
       />

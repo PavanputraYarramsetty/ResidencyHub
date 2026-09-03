@@ -1,25 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard, BedDouble, Users, IndianRupee, BarChart3,
-  Building2, DoorOpen, Tags, UserCog, ChevronLeft, ChevronRight, X
-} from 'lucide-react';
 
 const ownerSections = [
   {
     title: 'OPERATIONS',
     links: [
-      { to: '/', icon: LayoutDashboard, label: 'Dashboard', desc: 'Overview & metrics' },
-      { to: '/rooms', icon: BedDouble, label: 'Room Grid', desc: 'Live floor & room map' },
-      { to: '/customers', icon: Users, label: 'Customers', desc: 'Directory & history' },
+      { to: '/rooms', icon: 'grid_view', label: 'Room Management & Grid' },
+      { to: '/', icon: 'desk', label: 'Front Desk & Check-In' },
+      { to: '/customers', icon: 'badge', label: 'Guest Directory' },
     ]
   },
   {
     title: 'FINANCIALS',
     links: [
-      { to: '/revenue', icon: IndianRupee, label: 'Revenue', desc: '24-hr derived billing' },
-      { to: '/statistics', icon: BarChart3, label: 'Statistics', desc: 'Audit logs & export' },
+      { to: '/revenue', icon: 'receipt_long', label: 'Billing & 24h Tariff' },
+      { to: '/statistics', icon: 'history_toggle_off', label: 'Audit & History' },
     ]
   }
 ];
@@ -28,16 +23,14 @@ const adminSections = [
   {
     title: 'ADMINISTRATION',
     links: [
-      { to: '/admin', icon: LayoutDashboard, label: 'Admin Overview', desc: 'System stats' },
-      { to: '/admin/floors', icon: Building2, label: 'Manage Floors', desc: 'Add/edit levels' },
-      { to: '/admin/rooms', icon: DoorOpen, label: 'Manage Rooms', desc: 'Units & categories' },
-      { to: '/admin/categories', icon: Tags, label: 'Tariff & Types', desc: 'Pricing slabs' },
-      { to: '/admin/accounts', icon: UserCog, label: 'Staff Logins', desc: 'User privileges' },
+      { to: '/admin', icon: 'dashboard', label: 'System Overview' },
+      { to: '/admin/floors', icon: 'apartment', label: 'Manage Floors' },
+      { to: '/admin/rooms', icon: 'king_bed', label: 'Manage Rooms & Tariff' },
     ]
   }
 ];
 
-export default function Sidebar({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
+export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const { isAdmin } = useAuth();
   const location = useLocation();
   const isAdminArea = location.pathname.startsWith('/admin');
@@ -46,104 +39,101 @@ export default function Sidebar({ mobileOpen, setMobileOpen, collapsed, setColla
 
   return (
     <>
-      {/* Mobile Drawer Backdrop */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden"
-          />
-        )}
-      </AnimatePresence>
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-inverse-surface/40 backdrop-blur-xs lg:hidden"
+        />
+      )}
 
-      {/* Sidebar Container */}
-      <motion.aside
-        animate={{ width: collapsed ? 76 : 260 }}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className={`fixed lg:sticky top-0 lg:top-16 z-50 lg:z-30 h-screen lg:h-[calc(100vh-64px)] bg-white border-r border-slate-200/90 shadow-sm flex flex-col justify-between transition-transform duration-300 ${
-          mobileOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'
+      <aside
+        className={`fixed left-0 top-0 h-screen w-sidebar-width bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-transform duration-200 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Top Header on Mobile Only */}
-        <div className="lg:hidden flex items-center justify-between p-4 border-b border-slate-100">
-          <span className="text-sm font-bold text-slate-800">Navigation Menu</span>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Navigation Link Groups */}
-        <div className="flex-1 py-5 px-3 space-y-6 overflow-y-auto">
-          {sections.map((sec) => (
-            <div key={sec.title} className="space-y-1.5">
-              {!collapsed && (
-                <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                  {sec.title}
-                </p>
-              )}
-
-              {sec.links.map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/' || to === '/admin'}
-                  onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) =>
-                    `group relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                      isActive
-                        ? 'bg-slate-900 text-white shadow-md shadow-slate-900/15'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`
-                  }
-                  title={collapsed ? label : undefined}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon
-                        className={`w-5 h-5 flex-shrink-0 transition-transform group-hover:scale-110 ${
-                          isActive ? 'text-amber-400' : 'text-slate-400 group-hover:text-slate-700'
-                        }`}
-                      />
-                      {!collapsed && (
-                        <span className="truncate">{label}</span>
-                      )}
-                      {isActive && (
-                        <motion.span
-                          layoutId="active-pill"
-                          className="absolute right-2 w-1.5 h-4 rounded-full bg-amber-400"
-                        />
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+        <div className="flex flex-col">
+          {/* Logo Header */}
+          <div className="h-header-height flex items-center px-space-lg gap-space-sm bg-surface-container-lowest border-b border-surface-container-high/40">
+            {/* SVG Logo */}
+            <div className="w-9 h-9 rounded-lg bg-primary-container border border-secondary flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-secondary text-[20px]">hotel</span>
             </div>
-          ))}
+            <div className="flex flex-col">
+              <span className="font-headline-sm text-headline-sm text-on-surface leading-tight tracking-tight">
+                Sridevi Residency
+              </span>
+              <span className="font-label-md text-label-md text-secondary uppercase tracking-wider">
+                Lodge Management
+              </span>
+            </div>
+          </div>
+
+          {/* Nav Sections */}
+          <div className="py-space-sm overflow-y-auto max-h-[calc(100vh-140px)]">
+            {sections.map((sec) => (
+              <div key={sec.title} className="px-space-md py-space-sm">
+                <div className="font-label-md text-label-md text-on-surface-variant uppercase px-space-sm mb-space-xs tracking-wider">
+                  {sec.title}
+                </div>
+                <nav className="flex flex-col gap-space-xxs">
+                  {sec.links.map(({ to, icon, label }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={to === '/' || to === '/admin'}
+                      onClick={() => setMobileOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-space-sm px-space-md py-space-sm rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-primary-container text-on-primary font-label-lg rounded-lg shadow-xs'
+                            : 'font-body-md text-body-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                        }`
+                      }
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                      <span>{label}</span>
+                    </NavLink>
+                  ))}
+                </nav>
+              </div>
+            ))}
+
+            {/* Role Switch Shortcut in Sidebar */}
+            {isAdmin && (
+              <div className="px-space-md py-space-sm">
+                <div className="font-label-md text-label-md text-on-surface-variant uppercase px-space-sm mb-space-xs tracking-wider">
+                  SWITCH MODULE
+                </div>
+                <NavLink
+                  to={isAdminArea ? '/' : '/admin'}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg bg-surface-container-high text-on-surface font-label-lg hover:bg-surface-variant transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isAdminArea ? 'store' : 'admin_panel_settings'}
+                  </span>
+                  <span>{isAdminArea ? 'Owner Operations' : 'Admin Panel'}</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Bottom Collapse Toggle (Desktop only) */}
-        <div className="hidden lg:flex items-center justify-between p-3 border-t border-slate-100 bg-slate-50/50">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <>
-                <ChevronLeft className="w-4 h-4" />
-                <span>Collapse Sidebar</span>
-              </>
-            )}
-          </button>
+        {/* Footer Session Secure Card */}
+        <div className="p-space-md m-space-md rounded-xl bg-surface-container-lowest flex items-center justify-between border border-surface-container-high/60 shadow-xs">
+          <div className="flex items-center gap-space-sm">
+            <span className="material-symbols-outlined text-secondary text-[20px]">lock</span>
+            <div className="flex flex-col">
+              <span className="font-label-md text-label-md text-on-surface">Session Secure</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">Front Desk Term #01</span>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-[18px] text-on-tertiary-container" title="Session Verified">
+            verified_user
+          </span>
         </div>
-      </motion.aside>
+      </aside>
     </>
   );
 }

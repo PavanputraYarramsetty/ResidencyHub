@@ -1,426 +1,334 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { customerService } from '../../services/customerService';
-import { formatDateTime, formatCurrency } from '../../utils/dateFormat';
-import Modal from '../../components/common/Modal';
-import Loader from '../../components/common/Loader';
+import api from '../../services/api';
+import { formatDateTime } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
-import {
-  Users, Search, Plus, User, Phone, MapPin, Calendar,
-  Hash, ChevronLeft, ChevronRight, BedDouble, History, IndianRupee
-} from 'lucide-react';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addForm, setAddForm] = useState({ full_name: '', phone: '', age: '', address: '', aadhar_number: '' });
-  const [addLoading, setAddLoading] = useState(false);
-  const limit = 15;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGuest, setSelectedGuest] = useState(null);
 
   useEffect(() => {
     fetchCustomers();
-  }, [page, search]);
+  }, []);
 
   async function fetchCustomers() {
     try {
       setLoading(true);
-      const data = await customerService.getCustomers({ page, limit, search: search || undefined });
-      setCustomers(data.customers || []);
-      setTotal(data.total || 0);
+      const { data } = await api.get('/customers');
+      setCustomers(data || []);
+      if (data && data.length > 0) {
+        setSelectedGuest(data[0]);
+      }
     } catch (err) {
-      console.warn('Failed to fetch customers:', err);
+      toast.error('Failed to load guest directory');
     } finally {
       setLoading(false);
     }
   }
 
-  async function viewCustomer(customer) {
-    try {
-      const full = await customerService.getCustomer(customer.id);
-      setSelectedCustomer(full);
-      setShowDetail(true);
-    } catch (err) {
-      toast.error('Failed to load customer profile');
-    }
-  }
+  // Search filter
+  const filteredCustomers = customers.filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      c.full_name?.toLowerCase().includes(q) ||
+      c.phone?.includes(q) ||
+      c.aadhar_number?.toLowerCase().includes(q) ||
+      c.address?.toLowerCase().includes(q)
+    );
+  });
 
-  async function handleAddCustomer(e) {
-    e.preventDefault();
-    if (!addForm.full_name || !addForm.phone) return toast.error('Full Name and Phone Number are required');
-    try {
-      setAddLoading(true);
-      await customerService.createCustomer(addForm);
-      toast.success(`Guest "${addForm.full_name}" registered successfully ✅`);
-      setShowAddForm(false);
-      setAddForm({ full_name: '', phone: '', age: '', address: '', aadhar_number: '' });
-      fetchCustomers();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to add customer');
-    } finally {
-      setAddLoading(false);
-    }
+  function exportCSV() {
+    if (!customers.length) return toast.error('No customer data to export');
+    const headers = ['Full Name', 'Phone', 'Age', 'Gender', 'Aadhaar / ID', 'Address'];
+    const rows = customers.map((c) => [
+      `"${c.full_name || ''}"`,
+      `"${c.phone || ''}"`,
+      c.age || '',
+      c.gender || '',
+      `"${c.aadhar_number || ''}"`,
+      `"${c.address || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Sridevi_Residency_Guest_Directory_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Guest directory CSV exported! 📄');
   }
-
-  const totalPages = Math.ceil(total / limit) || 1;
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600">
-              <Users className="w-6 h-6" />
+    <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
+      {/* Page Header Deck */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 mt-space-md">
+        <div className="flex flex-col gap-space-xxs">
+          <div className="flex items-center gap-space-xs">
+            <span className="font-label-md text-label-md uppercase tracking-wider text-secondary">
+              Registry Archive & Compliance
             </span>
-            Guest Records & Profiles
+            <span className="w-1 h-1 rounded-full bg-outline-variant" />
+            <span className="font-label-md text-label-md text-on-surface-variant flex items-center gap-space-xxs">
+              <span className="material-symbols-outlined text-[14px] text-on-tertiary-container">verified</span>
+              Aadhaar Synced
+            </span>
+          </div>
+          <h1 className="font-display-sm text-display-sm text-on-surface">
+            Guest Records & Verification Directory
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Registered customer directory, visit history & repeat guest lookup
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Registered customer directory, visit logs, ID proofs, and repeat guest lookup
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 shadow-gold hover:from-amber-300 hover:to-amber-400 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Register New Guest</span>
-        </button>
+        {/* Quick Registry Stats */}
+        <div className="flex flex-wrap items-center gap-space-sm">
+          <div className="flex items-center gap-space-sm px-space-md py-space-xs rounded-lg bg-surface-container-low border border-surface-container-high/60 shadow-xs">
+            <span className="material-symbols-outlined text-secondary text-[20px]">person_pin</span>
+            <div className="flex flex-col">
+              <span className="font-tabular-numeric text-tabular-numeric text-on-surface">{customers.length}</span>
+              <span className="font-label-md text-label-md text-on-surface-variant uppercase">Total Guests</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-space-sm px-space-md py-space-xs rounded-lg bg-surface-container-highest border border-surface-container-high/60 shadow-xs">
+            <span className="material-symbols-outlined text-on-tertiary-container text-[20px]">fact_check</span>
+            <div className="flex flex-col">
+              <span className="font-tabular-numeric text-tabular-numeric text-on-tertiary-container">100%</span>
+              <span className="font-label-md text-label-md text-on-surface-variant uppercase">ID Verified</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* Filter & Search Belt */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high/60">
+        <div className="relative flex-1 min-w-[280px]">
+          <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
+            search
+          </span>
           <input
             type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search guest by name or phone number..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl text-xs font-medium bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by Name, Phone, Aadhaar, or City..."
+            className="w-full pl-9 pr-space-md py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:bg-surface-container placeholder:text-on-surface-variant"
           />
         </div>
 
-        <div className="text-xs font-bold text-slate-500 self-end sm:self-auto px-2">
-          Total Guests: <strong className="text-slate-900">{total}</strong>
+        <div className="flex flex-wrap items-center gap-space-xs">
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-label-lg text-label-lg transition-colors cursor-pointer"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[16px] text-secondary">file_download</span>
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
-      {/* Customers Table */}
-      {loading ? (
-        <Loader type="table" count={8} />
-      ) : customers.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-sm">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 opacity-50" />
-          </div>
-          <h3 className="text-base font-bold text-slate-900">No customer records found</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            {search ? 'No guest matched your search query. Try another term.' : 'Start by registering your first guest using the button above.'}
-          </p>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all"
-          >
-            Register Guest
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-luxury-sm overflow-hidden">
+      {/* Main 2-Column Layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+        {/* Left: Guest Table (8 cols) */}
+        <div className="xl:col-span-8 flex flex-col bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high/60 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 sm:px-6">Guest Name</th>
-                  <th className="py-3.5 px-4 font-semibold">Contact Phone</th>
-                  <th className="py-3.5 px-4 font-semibold hidden md:table-cell">City / Address</th>
-                  <th className="py-3.5 px-4 font-semibold hidden lg:table-cell">Identity Document</th>
-                  <th className="py-3.5 px-4 font-semibold">Registered</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+            <table className="w-full text-left font-body-sm text-body-sm">
+              <thead className="bg-surface-container-low text-on-surface-variant uppercase font-label-md text-label-md tracking-wider border-b border-surface-container-high/60">
+                <tr>
+                  <th className="py-space-sm px-space-md">Guest Name & Info</th>
+                  <th className="py-space-sm px-space-md">Contact Phone</th>
+                  <th className="py-space-sm px-space-md">City / Address</th>
+                  <th className="py-space-sm px-space-md">Govt ID / Aadhaar</th>
+                  <th className="py-space-sm px-space-md text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {customers.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => viewCustomer(c)}
-                    className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
-                  >
-                    {/* Name + Avatar */}
-                    <td className="py-3 px-4 sm:px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-700 font-extrabold text-xs flex items-center justify-center flex-shrink-0">
-                          {c.full_name?.charAt(0) || 'G'}
-                        </div>
-                        <div>
-                          <p className="font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">
-                            {c.full_name}
-                          </p>
-                          {c.age && (
-                            <p className="text-[10px] text-slate-400 font-medium">
-                              Age: {c.age} yrs
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Phone */}
-                    <td className="py-3 px-4 font-medium text-slate-700">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 font-mono text-[11px]">
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        {c.phone}
-                      </span>
-                    </td>
-
-                    {/* Address */}
-                    <td className="py-3 px-4 text-slate-600 hidden md:table-cell max-w-xs truncate">
-                      {c.address || '—'}
-                    </td>
-
-                    {/* Aadhar */}
-                    <td className="py-3 px-4 hidden lg:table-cell">
-                      {c.aadhar_number ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-[11px] font-semibold">
-                          <Hash className="w-3 h-3 text-emerald-500" />
-                          {c.aadhar_number}
-                        </span>
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Date */}
-                    <td className="py-3 px-4 text-slate-500">
-                      {formatDateTime(c.created_at)}
-                    </td>
-
-                    {/* Action */}
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          viewCustomer(c);
-                        }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                      >
-                        History
-                      </button>
+              <tbody className="divide-y divide-surface-container-high/40 text-on-surface">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-on-surface-variant">
+                      <div className="w-6 h-6 border-2 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      Loading guest directory...
                     </td>
                   </tr>
-                ))}
+                ) : filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-on-surface-variant">
+                      No matching guests found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCustomers.map((guest) => {
+                    const isSelected = selectedGuest?.id === guest.id;
+                    const initials = guest.full_name
+                      ?.split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase() || 'G';
+
+                    return (
+                      <tr
+                        key={guest.id}
+                        onClick={() => setSelectedGuest(guest)}
+                        className={`hover:bg-surface-container-low cursor-pointer transition-colors ${
+                          isSelected ? 'bg-surface-container-low font-semibold' : ''
+                        }`}
+                      >
+                        <td className="py-space-sm px-space-md">
+                          <div className="flex items-center gap-space-sm">
+                            <div className="w-8 h-8 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center font-label-lg text-label-lg flex-shrink-0">
+                              {initials}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-label-lg text-label-lg text-on-surface truncate">
+                                {guest.full_name}
+                              </span>
+                              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                                {guest.age ? `${guest.age} yrs` : ''} {guest.gender ? `• ${guest.gender}` : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-space-sm px-space-md font-tabular-numeric text-tabular-numeric text-on-surface whitespace-nowrap">
+                          {guest.phone || '—'}
+                        </td>
+
+                        <td className="py-space-sm px-space-md text-on-surface-variant max-w-[160px] truncate">
+                          {guest.address || '—'}
+                        </td>
+
+                        <td className="py-space-sm px-space-md whitespace-nowrap">
+                          <div className="flex items-center gap-space-xxs">
+                            <span className="font-tabular-numeric text-tabular-numeric text-on-surface">
+                              {guest.aadhar_number || '—'}
+                            </span>
+                            {guest.aadhar_number && (
+                              <span className="material-symbols-outlined text-[14px] text-on-tertiary-container" title="Verified">
+                                verified
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-label-md text-label-md text-on-tertiary-container uppercase">
+                            UIDAI / GOVT ID
+                          </span>
+                        </td>
+
+                        <td className="py-space-sm px-space-md text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGuest(guest);
+                            }}
+                            className="px-space-xs py-space-xxs rounded bg-surface-container text-on-surface hover:bg-surface-variant font-label-md text-label-md transition-colors"
+                          >
+                            Profile
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Pagination Bar */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-600">
-              <span>Page {page} of {totalPages}</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+        {/* Right: Guest Drawer Card (4 cols) */}
+        <div className="xl:col-span-4 flex flex-col gap-space-md">
+          {selectedGuest ? (
+            <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-space-sm">
+                  <div className="w-12 h-12 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center font-display-sm text-display-sm shadow-sm flex-shrink-0">
+                    {selectedGuest.full_name
+                      ?.split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase() || 'G'}
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface leading-tight">
+                      {selectedGuest.full_name}
+                    </h2>
+                    <span className="font-body-sm text-body-sm text-on-surface-variant">
+                      {selectedGuest.age ? `${selectedGuest.age} yrs` : ''} {selectedGuest.gender ? `• ${selectedGuest.gender}` : ''}
+                    </span>
+                  </div>
+                </div>
+                <span className="px-space-xs py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md uppercase font-bold">
+                  Verified Patron
+                </span>
               </div>
+
+              {/* Contact Info */}
+              <div className="grid grid-cols-2 gap-space-sm">
+                <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col">
+                  <span className="font-label-md text-label-md text-on-surface-variant uppercase">Phone</span>
+                  <span className="font-tabular-numeric text-tabular-numeric text-on-surface">
+                    {selectedGuest.phone || '—'}
+                  </span>
+                </div>
+                <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col">
+                  <span className="font-label-md text-label-md text-on-surface-variant uppercase">Govt ID</span>
+                  <span className="font-tabular-numeric text-tabular-numeric text-on-surface">
+                    {selectedGuest.aadhar_number || '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xxs">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase">Address / Native City</span>
+                <span className="font-body-md text-body-md text-on-surface">
+                  {selectedGuest.address || 'No permanent address recorded'}
+                </span>
+              </div>
+
+              {/* Stay History Table */}
+              <div className="flex flex-col gap-space-xs">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase">
+                  Stay History & Bookings
+                </span>
+                <div className="flex flex-col gap-space-xxs font-body-sm text-body-sm max-h-48 overflow-y-auto">
+                  {selectedGuest.bookings && selectedGuest.bookings.length > 0 ? (
+                    selectedGuest.bookings.map((b) => (
+                      <div
+                        key={b.id}
+                        className="flex items-center justify-between py-space-xs px-space-sm rounded bg-surface border border-surface-container-high/40"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-on-surface">
+                            Room {b.rooms?.room_number || 'Unit'} — Status: {b.status}
+                          </span>
+                          <span className="text-[11px] text-on-surface-variant">
+                            {formatDateTime(b.booking_date)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-body-sm text-on-surface-variant italic p-2">
+                      Registered customer record
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-surface-container-high/60 text-center py-12 text-on-surface-variant">
+              Select a guest from the directory to inspect profile
             </div>
           )}
         </div>
-      )}
-
-      {/* Customer Detail & Stay History Modal */}
-      <Modal isOpen={showDetail} onClose={() => setShowDetail(false)} title="Guest Profile & History" size="lg">
-        {selectedCustomer && (
-          <div className="space-y-6">
-            {/* Profile Overview Card */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-800 font-black text-lg flex items-center justify-center">
-                  {selectedCustomer.full_name?.charAt(0) || 'G'}
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900">{selectedCustomer.full_name}</h3>
-                  <p className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-                    <span>{selectedCustomer.phone}</span>
-                    {selectedCustomer.age && <span>• Age {selectedCustomer.age}</span>}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-200/80">
-                <p><strong className="text-slate-400 font-bold uppercase">Aadhar:</strong> {selectedCustomer.aadhar_number || 'Not provided'}</p>
-                <p><strong className="text-slate-400 font-bold uppercase">Address:</strong> {selectedCustomer.address || 'Not provided'}</p>
-              </div>
-            </div>
-
-            {/* Stay History Table */}
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                <History className="w-4 h-4 text-amber-500" />
-                Booking & Stay History ({selectedCustomer.booking_history?.length || 0})
-              </h4>
-
-              {selectedCustomer.booking_history?.length > 0 ? (
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {selectedCustomer.booking_history.map((b) => (
-                    <div
-                      key={b.id}
-                      className="p-3 rounded-xl bg-white border border-slate-200 flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-slate-900">
-                            Room {b.rooms?.room_number || '—'}
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
-                            {b.rooms?.room_categories?.name || 'Standard'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Check-in: {b.check_in ? formatDateTime(b.check_in) : 'Pending'}
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          b.status === 'checked_out'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : b.status === 'checked_in'
-                            ? 'bg-rose-50 text-rose-700'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {b.status}
-                        </span>
-                        {b.total_amount && (
-                          <p className="font-black text-slate-900 mt-1">
-                            {formatCurrency(b.total_amount)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 italic text-center py-6">
-                  No previous bookings recorded for this guest.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Add Guest Modal */}
-      <Modal isOpen={showAddForm} onClose={() => setShowAddForm(false)} title="Register Walk-In Guest">
-        <form onSubmit={handleAddCustomer} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Full Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={addForm.full_name}
-              onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none"
-              placeholder="e.g. Ramesh Kumar"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Phone Number *
-              </label>
-              <input
-                type="tel"
-                required
-                value={addForm.phone}
-                onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none"
-                placeholder="10-digit mobile"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Age
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="120"
-                value={addForm.age}
-                onChange={(e) => setAddForm({ ...addForm, age: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none"
-                placeholder="Age in years"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Aadhar Number (12 digits)
-            </label>
-            <input
-              type="text"
-              maxLength="14"
-              value={addForm.aadhar_number}
-              onChange={(e) => setAddForm({ ...addForm, aadhar_number: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none font-mono"
-              placeholder="12-digit number"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Permanent Address
-            </label>
-            <textarea
-              rows="2"
-              value={addForm.address}
-              onChange={(e) => setAddForm({ ...addForm, address: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none resize-none"
-              placeholder="City, State, PIN"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={addLoading}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50"
-            >
-              {addLoading ? 'Saving...' : 'Register Guest'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      </div>
     </div>
   );
 }
