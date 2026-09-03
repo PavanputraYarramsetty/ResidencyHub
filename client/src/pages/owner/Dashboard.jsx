@@ -52,20 +52,30 @@ export default function Dashboard() {
   const totalCheckInsToday = todayCheckIns || (stats?.today_check_ins ?? 0);
   const totalCheckOutsToday = todayCheckOuts || (stats?.today_check_outs ?? 0);
 
-  // Compute Total Revenue Today Calculated (Sum of checked-out earnings today + advance collections)
+  // Compute Total Revenue Today Calculated:
+  // 1. Backend API today's revenue stats
+  const apiTodayRevenue = Number(stats?.today_revenue) || 0;
+
+  // 2. Local audit ledger checked-out revenue today
   const todayRevenueLocal = auditLedger.reduce((sum, log) => {
-    if (!log.check_out || new Date(log.check_out) < todayStart) return sum;
+    if (!log.check_out) return sum;
+    const checkOutDate = new Date(log.check_out);
+    if (isNaN(checkOutDate.getTime()) || checkOutDate < todayStart) return sum;
     return sum + (Number(log.total_amount) || 0);
   }, 0);
 
-  const activeAdvanceToday = allRooms.reduce((sum, r) => {
-    if (r.status === 'occupied' && r.active_booking?.check_in && new Date(r.active_booking.check_in) >= todayStart) {
-      return sum + (Number(r.active_booking.advance_amount) || 0);
+  // 3. Occupied rooms revenue checked in today (or currently active)
+  const activeOccupiedRevenue = allRooms.reduce((sum, r) => {
+    if (r.status === 'occupied' && r.active_booking) {
+      const b = r.active_booking;
+      const roomTotal = Number(b.total_amount) || (Number(b.rate_per_day || r.room_categories?.base_price || 1000) * Number(b.no_of_days || 1));
+      return sum + roomTotal;
     }
     return sum;
   }, 0);
 
-  const totalRevenueTodayCalculated = todayRevenueLocal + activeAdvanceToday || (stats?.today_revenue ?? 0);
+  // Grand Total Revenue Today
+  const totalRevenueTodayCalculated = apiTodayRevenue + todayRevenueLocal + activeOccupiedRevenue;
 
   return (
     <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
