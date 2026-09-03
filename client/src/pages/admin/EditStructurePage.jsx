@@ -23,8 +23,8 @@ export default function EditStructurePage() {
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [targetFloorId, setTargetFloorId] = useState('');
   const [newRoomNumber, setNewRoomNumber] = useState('');
-  const [selectedPresetId, setSelectedPresetId] = useState('cat-1');
-  const [customPrice, setCustomPrice] = useState('');
+  const [customCategoryName, setCustomCategoryName] = useState('AC Single');
+  const [customPrice, setCustomPrice] = useState('1500');
 
   // Handle Create Floor
   function handleCreateFloor(e) {
@@ -49,30 +49,22 @@ export default function EditStructurePage() {
   function openAddRoomForFloor(floorId) {
     setTargetFloorId(floorId);
     setNewRoomNumber('');
-    setSelectedPresetId('cat-1');
-    const preset = ROOM_CATEGORIES_PRESETS[0];
-    setCustomPrice(preset.base_price.toString());
+    setCustomCategoryName('AC Single');
+    setCustomPrice('1500');
     setShowAddRoomModal(true);
-  }
-
-  // Handle Preset Change
-  function handleCategoryPresetChange(catId) {
-    setSelectedPresetId(catId);
-    const preset = ROOM_CATEGORIES_PRESETS.find((c) => c.id === catId);
-    if (preset) setCustomPrice(preset.base_price.toString());
   }
 
   // Handle Create Room
   function handleCreateRoom(e) {
     e.preventDefault();
     if (!newRoomNumber) return toast.error('Please enter a room number');
+    if (!customCategoryName) return toast.error('Please enter a category name');
     if (!targetFloorId) return toast.error('Target floor required');
 
-    const preset = ROOM_CATEGORIES_PRESETS.find((c) => c.id === selectedPresetId) || ROOM_CATEGORIES_PRESETS[0];
     const categoryObj = {
-      id: preset.id,
-      name: preset.name,
-      base_price: customPrice ? parseFloat(customPrice) : preset.base_price,
+      id: `cat-${customCategoryName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      name: customCategoryName.trim(),
+      base_price: customPrice ? parseFloat(customPrice) : 1000,
     };
 
     addRoom(targetFloorId, {
@@ -81,7 +73,7 @@ export default function EditStructurePage() {
     });
 
     const targetFloor = floors.find((f) => f.id === targetFloorId);
-    toast.success(`Room ${newRoomNumber} added to ${targetFloor?.floor_name || 'Floor'}! 🏨`);
+    toast.success(`Room ${newRoomNumber} (${customCategoryName}) added to ${targetFloor?.floor_name || 'Floor'}! 🏨`);
     setShowAddRoomModal(false);
   }
 
@@ -340,18 +332,30 @@ export default function EditStructurePage() {
             </div>
 
             <div className="flex flex-col gap-space-xxs">
-              <label className="font-label-md text-label-md text-on-surface font-medium">Room Category Preset</label>
-              <select
-                value={selectedPresetId}
-                onChange={(e) => handleCategoryPresetChange(e.target.value)}
-                className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none border border-surface-container-high/60 cursor-pointer"
-              >
-                {ROOM_CATEGORIES_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.name} — ({formatCurrency(preset.base_price)}/24h)
-                  </option>
+              <label className="font-label-md text-label-md text-on-surface font-medium">
+                Room Category Name <span className="text-error">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={customCategoryName}
+                onChange={(e) => setCustomCategoryName(e.target.value)}
+                placeholder="e.g. AC, Non-AC, Deluxe Suite, Executive Single"
+                className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none border border-surface-container-high/60 font-semibold"
+              />
+              <div className="flex flex-wrap gap-1 mt-1">
+                <span className="text-[11px] text-on-surface-variant font-medium">Quick Suggestions:</span>
+                {['AC', 'Non-AC', 'AC Single', 'AC Double', 'Non-AC Single', 'Deluxe Suite'].map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setCustomCategoryName(name)}
+                    className="px-2 py-0.5 rounded text-[11px] bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-container-high/60 cursor-pointer"
+                  >
+                    {name}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             <div className="flex flex-col gap-space-xxs">

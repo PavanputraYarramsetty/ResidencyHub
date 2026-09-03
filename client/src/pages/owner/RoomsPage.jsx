@@ -81,16 +81,24 @@ export default function RoomsPage() {
     })
     .filter(Boolean);
 
-  // Extract all categories available in the residency
+  // Dynamically extract all unique categories created/added by Admin across all rooms
+  const dynamicCategorySet = new Map();
+  allRooms.forEach((r) => {
+    const catName = r.room_categories?.name || 'Standard';
+    const catPrice = r.room_categories?.base_price;
+    if (!dynamicCategorySet.has(catName)) {
+      dynamicCategorySet.set(catName, {
+        id: catName,
+        name: catPrice ? `${catName} (${formatCurrency(catPrice)}/24h)` : catName,
+      });
+    }
+  });
+
   const residencyCategories = [
     { id: 'all', name: 'All Categories' },
     { id: 'ac_all', name: '⚡ All AC Rooms' },
     { id: 'non_ac_all', name: '🌿 All Non-AC Rooms' },
-    { id: 'cat-1', name: 'AC Single (₹1,500/24h)' },
-    { id: 'cat-2', name: 'AC Double (₹2,000/24h)' },
-    { id: 'cat-3', name: 'Non-AC Single (₹800/24h)' },
-    { id: 'cat-4', name: 'Non-AC Double (₹1,200/24h)' },
-    { id: 'cat-5', name: 'Deluxe Suite (₹3,000/24h)' },
+    ...Array.from(dynamicCategorySet.values()),
   ];
 
   return (
