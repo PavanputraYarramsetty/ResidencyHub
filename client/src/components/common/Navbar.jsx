@@ -55,7 +55,7 @@ export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
             <span>New Booking</span>
           </button>
 
-          {/* Profile & Role Switcher */}
+          {/* Profile & Logout */}
           <div className="flex items-center gap-space-sm pl-space-sm border-l border-surface-container-high">
             <div className="hidden sm:flex flex-col text-right">
               <span className="font-label-lg text-label-lg text-on-surface">
@@ -69,20 +69,6 @@ export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
             <div className="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-bold text-xs uppercase shadow-xs">
               {profile?.role === 'admin' ? 'A' : 'O'}
             </div>
-
-            {/* Instant Role Toggle Button */}
-            <button
-              onClick={() => {
-                const newRole = profile?.role === 'admin' ? 'owner' : 'admin';
-                localStorage.setItem('demo_role', newRole);
-                window.location.href = newRole === 'admin' ? '/admin/edit-structure' : '/';
-              }}
-              className="px-2 py-1 rounded-md text-[11px] font-bold bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-container-high cursor-pointer transition-colors"
-              title="Switch between Admin and Owner role"
-              type="button"
-            >
-              {profile?.role === 'admin' ? 'Switch to Owner' : 'Switch to Admin'}
-            </button>
 
             <button
               onClick={signOut}
