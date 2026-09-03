@@ -86,6 +86,39 @@ export function ResidencyProvider({ children }) {
       setLoading(true);
       const { data } = await api.get('/floors');
       if (Array.isArray(data) && data.length > 0) {
+        // Merge with local overrides if room was marked occupied/available locally
+        const saved = localStorage.getItem('residency_floors');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const statusMap = new Map();
+            parsed.forEach((pf) => {
+              (pf.rooms || []).forEach((pr) => {
+                statusMap.set(pr.id, { status: pr.status, active_booking: pr.active_booking });
+                statusMap.set(String(pr.room_number), { status: pr.status, active_booking: pr.active_booking });
+              });
+            });
+
+            const mergedFloors = data.map((f) => ({
+              ...f,
+              rooms: (f.rooms || []).map((r) => {
+                const override = statusMap.get(r.id) || statusMap.get(String(r.room_number));
+                if (override) {
+                  return {
+                    ...r,
+                    status: override.status || r.status,
+                    active_booking: override.active_booking !== undefined ? override.active_booking : r.active_booking,
+                  };
+                }
+                return r;
+              }),
+            }));
+            setFloors(mergedFloors);
+            return;
+          } catch (e) {
+            /* ignore */
+          }
+        }
         setFloors(data);
       }
     } catch (err) {
