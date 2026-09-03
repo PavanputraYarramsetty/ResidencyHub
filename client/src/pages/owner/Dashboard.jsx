@@ -29,23 +29,25 @@ export default function Dashboard() {
   const availableRooms = Math.max(0, totalRooms - occupiedRooms);
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-  // Today's Movements — derived from actual room data + checkout audit ledger
+  // Today's Movements — strict date matching for current day
+  const todayDateStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const todayISO = todayStart.toISOString();
 
   // Count today's check-ins from currently occupied rooms
   const allRooms = floors.flatMap((f) => f.rooms || []);
   const todayCheckIns = allRooms.filter((r) => {
     if (r.status !== 'occupied' || !r.active_booking?.check_in) return false;
-    return new Date(r.active_booking.check_in) >= todayStart;
+    const bookingDateStr = new Date(r.active_booking.check_in).toLocaleDateString('en-CA');
+    return bookingDateStr === todayDateStr;
   }).length;
 
   // Count today's check-outs from the audit ledger stored in localStorage
   const auditLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
   const todayCheckOuts = auditLedger.filter((log) => {
     if (!log.check_out) return false;
-    return new Date(log.check_out) >= todayStart;
+    const checkoutDateStr = new Date(log.check_out).toLocaleDateString('en-CA');
+    return checkoutDateStr === todayDateStr;
   }).length;
 
   // Use local counts, fallback to API stats
