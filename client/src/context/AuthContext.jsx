@@ -85,6 +85,7 @@ export function AuthProvider({ children }) {
 
   async function fetchProfile(userId) {
     try {
+      const savedDemoRole = localStorage.getItem('demo_role');
       const { data } = await supabase
         .from('profiles')
         .select('*')
@@ -92,20 +93,27 @@ export function AuthProvider({ children }) {
         .single();
 
       if (data) {
-        setProfile(data);
+        // If profile exists, check if role needs overriding based on email or demo_role
+        const role = savedDemoRole || data.role || 'owner';
+        setProfile({ ...data, role });
       } else {
+        const isEmailAdmin = user?.email?.toLowerCase().includes('admin');
+        const role = savedDemoRole || (isEmailAdmin ? 'admin' : 'owner');
         setProfile({
           id: userId,
-          full_name: 'Residency Manager',
-          role: 'owner',
+          full_name: role === 'admin' ? 'System Admin' : 'Front Desk Owner',
+          role: role,
           residency_id: '00000000-0000-0000-0000-000000000001',
         });
       }
     } catch (err) {
+      const savedDemoRole = localStorage.getItem('demo_role');
+      const isEmailAdmin = user?.email?.toLowerCase().includes('admin');
+      const role = savedDemoRole || (isEmailAdmin ? 'admin' : 'owner');
       setProfile({
         id: userId,
-        full_name: 'Residency Manager',
-        role: 'owner',
+        full_name: role === 'admin' ? 'System Admin' : 'Front Desk Owner',
+        role: role,
         residency_id: '00000000-0000-0000-0000-000000000001',
       });
     } finally {
@@ -116,6 +124,7 @@ export function AuthProvider({ children }) {
   async function signIn(email, password) {
     const cleanEmail = email.trim().toLowerCase();
     const role = cleanEmail.includes('admin') ? 'admin' : 'owner';
+    localStorage.setItem('demo_role', role);
 
     // 1. Try Supabase remote sign in
     if (isSupabaseConfigured) {
@@ -127,8 +136,14 @@ export function AuthProvider({ children }) {
 
         if (!error && data?.user) {
           setUser(data.user);
-          await fetchProfile(data.user.id);
-          return data;
+          const demoProf = DEMO_PROFILES[role] || DEMO_PROFILES.owner;
+          setProfile({
+            ...demoProf,
+            id: data.user.id,
+            role: role,
+          });
+          setLoading(false);
+          return { user: { ...data.user, role } };
         }
       } catch (err) {
         console.warn('Supabase auth attempt notice:', err.message);

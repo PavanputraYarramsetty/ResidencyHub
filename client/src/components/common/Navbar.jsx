@@ -55,24 +55,38 @@ export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
             <span>New Booking</span>
           </button>
 
-          {/* Profile & Logout */}
+          {/* Profile & Role Switcher */}
           <div className="flex items-center gap-space-sm pl-space-sm border-l border-surface-container-high">
             <div className="hidden sm:flex flex-col text-right">
               <span className="font-label-lg text-label-lg text-on-surface">
                 {profile?.full_name || 'Front Desk'}
               </span>
-              <span className="font-label-md text-label-md text-on-surface-variant capitalize">
-                {profile?.role === 'admin' ? 'System Admin (Front Desk)' : 'Owner / Reception'}
+              <span className="font-label-md text-label-md text-secondary font-bold capitalize">
+                {profile?.role === 'admin' ? '⚡ System Admin' : '🏨 Owner / Reception'}
               </span>
             </div>
 
-            <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-xs uppercase shadow-xs">
-              {profile?.full_name?.charAt(0) || 'R'}
+            <div className="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-bold text-xs uppercase shadow-xs">
+              {profile?.role === 'admin' ? 'A' : 'O'}
             </div>
+
+            {/* Instant Role Toggle Button */}
+            <button
+              onClick={() => {
+                const newRole = profile?.role === 'admin' ? 'owner' : 'admin';
+                localStorage.setItem('demo_role', newRole);
+                window.location.href = newRole === 'admin' ? '/admin/edit-structure' : '/';
+              }}
+              className="px-2 py-1 rounded-md text-[11px] font-bold bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-container-high cursor-pointer transition-colors"
+              title="Switch between Admin and Owner role"
+              type="button"
+            >
+              {profile?.role === 'admin' ? 'Switch to Owner' : 'Switch to Admin'}
+            </button>
 
             <button
               onClick={signOut}
-              className="p-space-xs rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container transition-colors ml-1"
+              className="p-space-xs rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container transition-colors ml-1 cursor-pointer"
               title="Sign Out"
               type="button"
             >
