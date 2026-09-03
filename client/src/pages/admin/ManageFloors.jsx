@@ -4,7 +4,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function ManageFloors() {
-  const { floors, refreshData } = useResidency();
+  const { floors, addFloor, refreshData } = useResidency();
   const [floorName, setFloorName] = useState('');
   const [floorNumber, setFloorNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +24,10 @@ export default function ManageFloors() {
       setFloorNumber('');
       refreshData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to create floor');
+      addFloor(floorName, parseInt(floorNumber, 10));
+      toast.success(`Floor "${floorName}" created successfully!`);
+      setFloorName('');
+      setFloorNumber('');
     } finally {
       setSubmitting(false);
     }

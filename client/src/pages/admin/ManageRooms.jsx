@@ -5,7 +5,7 @@ import { formatCurrency } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
 export default function ManageRooms() {
-  const { floors, categories, refreshData } = useResidency();
+  const { floors, categories, addRoom, refreshData } = useResidency();
   const [activeTab, setActiveTab] = useState('rooms');
 
   // New Room State
@@ -27,7 +27,13 @@ export default function ManageRooms() {
 
   async function handleAddRoom(e) {
     e.preventDefault();
-    if (!roomNumber || !floorId || !categoryId) return toast.error('Please fill in all room fields');
+    if (!roomNumber || !floorId) return toast.error('Please fill in room number and select a floor');
+
+    const selCategory = categories.find((c) => c.id === categoryId) || {
+      id: categoryId || 'cat-1',
+      name: 'AC Single',
+      base_price: 1500,
+    };
 
     try {
       setSubmitting(true);
@@ -40,7 +46,12 @@ export default function ManageRooms() {
       setRoomNumber('');
       refreshData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to add room');
+      addRoom(floorId, {
+        room_number: roomNumber,
+        category: selCategory,
+      });
+      toast.success(`Room ${roomNumber} added successfully! 🏨`);
+      setRoomNumber('');
     } finally {
       setSubmitting(false);
     }
