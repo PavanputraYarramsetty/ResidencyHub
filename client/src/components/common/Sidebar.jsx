@@ -8,6 +8,7 @@ const ownerSections = [
       { to: '/rooms', icon: 'grid_view', label: 'Room Management & Grid' },
       { to: '/', icon: 'desk', label: 'Front Desk Dashboard' },
       { to: '/customers', icon: 'badge', label: 'Guest Directory' },
+      { to: '/admin/edit-structure', icon: 'edit_road', label: 'Edit Structure' },
     ]
   },
   {
@@ -23,9 +24,11 @@ const adminSections = [
   {
     title: 'ADMINISTRATION',
     links: [
+      { to: '/rooms', icon: 'grid_view', label: 'Room Management & Grid' },
+      { to: '/', icon: 'desk', label: 'Front Desk Dashboard' },
+      { to: '/customers', icon: 'badge', label: 'Guest Directory' },
+      { to: '/admin/edit-structure', icon: 'edit_road', label: 'Edit Structure' },
       { to: '/admin', icon: 'dashboard', label: 'System Overview' },
-      { to: '/admin/floors', icon: 'apartment', label: 'Manage Floors' },
-      { to: '/admin/rooms', icon: 'king_bed', label: 'Manage Rooms & Tariff' },
     ]
   }
 ];

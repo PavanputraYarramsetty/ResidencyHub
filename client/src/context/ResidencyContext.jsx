@@ -211,6 +211,77 @@ export function ResidencyProvider({ children }) {
     localStorage.setItem('residency_audit_ledger', JSON.stringify([newLog, ...savedLedger]));
   }
 
+  // Structural Management — Add Floor
+  function addFloor(floorName, floorNumber) {
+    setFloors((prev) => {
+      const newFloor = {
+        id: `floor-${Date.now()}`,
+        floor_number: Number(floorNumber) || prev.length,
+        floor_name: floorName || `Floor ${prev.length + 1}`,
+        stats: { totalRooms: 0, occupiedRooms: 0, availableRooms: 0, reservedRooms: 0 },
+        rooms: [],
+      };
+      const updated = [...prev, newFloor];
+      localStorage.setItem('residency_floors', JSON.stringify(updated));
+      return updated;
+    });
+  }
+
+  // Structural Management — Delete Floor
+  function deleteFloor(floorId) {
+    setFloors((prev) => {
+      const updated = prev.filter((f) => f.id !== floorId);
+      localStorage.setItem('residency_floors', JSON.stringify(updated));
+      return updated;
+    });
+  }
+
+  // Structural Management — Add Room to Floor
+  function addRoom(floorId, roomData) {
+    setFloors((prev) => {
+      const updated = prev.map((f) => {
+        if (f.id === floorId) {
+          const categoryObj = roomData.category || {
+            id: roomData.category_id || 'cat-1',
+            name: roomData.category_name || 'AC Single',
+            base_price: Number(roomData.base_price) || 1500,
+          };
+          const newRoom = {
+            id: `r-${Date.now()}`,
+            room_number: roomData.room_number,
+            status: 'available',
+            category_id: categoryObj.id,
+            room_categories: categoryObj,
+          };
+          return {
+            ...f,
+            rooms: [...(f.rooms || []), newRoom],
+          };
+        }
+        return f;
+      });
+      localStorage.setItem('residency_floors', JSON.stringify(updated));
+      return updated;
+    });
+  }
+
+  // Structural Management — Delete Room
+  function deleteRoom(floorId, roomId) {
+    setFloors((prev) => {
+      const updated = prev.map((f) => {
+        if (f.id === floorId) {
+          return {
+            ...f,
+            rooms: (f.rooms || []).filter((r) => r.id !== roomId),
+          };
+        }
+        return f;
+      });
+      localStorage.setItem('residency_floors', JSON.stringify(updated));
+      return updated;
+    });
+  }
+
   const value = {
     floors,
     categories,
@@ -220,6 +291,10 @@ export function ResidencyProvider({ children }) {
     refreshCategories: fetchCategories,
     markRoomOccupied,
     markRoomAvailable,
+    addFloor,
+    deleteFloor,
+    addRoom,
+    deleteRoom,
   };
 
   return <ResidencyContext.Provider value={value}>{children}</ResidencyContext.Provider>;
