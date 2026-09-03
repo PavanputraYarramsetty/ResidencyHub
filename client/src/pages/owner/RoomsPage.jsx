@@ -3,6 +3,7 @@ import { useResidency } from '../../context/ResidencyContext';
 import RoomCard from '../../components/owner/RoomCard';
 import BookingForm from '../../components/owner/BookingForm';
 import CheckInOutPanel from '../../components/owner/CheckInOutPanel';
+import { formatCurrency } from '../../utils/dateFormat';
 
 export default function RoomsPage() {
   const { floors, loading, refreshData } = useResidency();
