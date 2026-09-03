@@ -32,7 +32,7 @@ export default function AppRoutes() {
       <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
 
       {/* Admin Routes */}
-      <Route path="/admin/edit-structure" element={<ProtectedRoute><EditStructurePage /></ProtectedRoute>} />
+      <Route path="/admin/edit-structure" element={<ProtectedRoute requiredRole="admin"><EditStructurePage /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/floors" element={<ProtectedRoute requiredRole="admin"><ManageFloors /></ProtectedRoute>} />
       <Route path="/admin/rooms" element={<ProtectedRoute requiredRole="admin"><ManageRooms /></ProtectedRoute>} />

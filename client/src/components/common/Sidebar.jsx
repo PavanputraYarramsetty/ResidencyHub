@@ -8,7 +8,6 @@ const ownerSections = [
       { to: '/rooms', icon: 'grid_view', label: 'Room Management & Grid' },
       { to: '/', icon: 'desk', label: 'Front Desk Dashboard' },
       { to: '/customers', icon: 'badge', label: 'Guest Directory' },
-      { to: '/admin/edit-structure', icon: 'edit_road', label: 'Edit Structure' },
     ]
   },
   {
