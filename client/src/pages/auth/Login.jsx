@@ -17,9 +17,14 @@ export default function Login() {
 
     try {
       setLoading(true);
-      await signIn(email, password);
+      const res = await signIn(email, password);
       toast.success('Welcome back to Sridevi Residency!');
-      navigate('/');
+      const cleanEmail = email.trim().toLowerCase();
+      if (cleanEmail.includes('admin') || res?.user?.role === 'admin') {
+        navigate('/admin/edit-structure');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       toast.error(err.message || 'Login failed. Please check credentials.');
     } finally {

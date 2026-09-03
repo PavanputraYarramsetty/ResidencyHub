@@ -35,7 +35,7 @@ const adminSections = [
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const { isAdmin } = useAuth();
   const location = useLocation();
-  const isAdminArea = location.pathname.startsWith('/admin');
+  const isAdminArea = isAdmin || location.pathname.startsWith('/admin');
 
   const sections = isAdminArea ? adminSections : ownerSections;
 
