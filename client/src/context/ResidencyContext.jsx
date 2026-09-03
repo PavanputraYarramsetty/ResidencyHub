@@ -170,75 +170,131 @@ export function ResidencyProvider({ children }) {
     localStorage.setItem('residency_audit_ledger', JSON.stringify([newLog, ...savedLedger]));
   }
 
+  useEffect(() => {
+    function handleSync() {
+      const saved = localStorage.getItem('residency_floors');
+      if (saved) {
+        try {
+          setFloors(JSON.parse(saved));
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('residency_updated', handleSync);
+
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('residency_updated', handleSync);
+    };
+  }, []);
+
   // Structural Management — Add Floor
-  function addFloor(floorName, floorNumber) {
-    setFloors((prev) => {
-      const newFloor = {
-        id: `floor-${Date.now()}`,
-        floor_number: Number(floorNumber) || prev.length,
-        floor_name: floorName || `Floor ${prev.length + 1}`,
-        stats: { totalRooms: 0, occupiedRooms: 0, availableRooms: 0, reservedRooms: 0 },
-        rooms: [],
-      };
-      const updated = [...prev, newFloor];
-      localStorage.setItem('residency_floors', JSON.stringify(updated));
-      return updated;
-    });
+  async function addFloor(floorName, floorNumber) {
+    const newFloorId = `floor-${Date.now()}`;
+    const newFloor = {
+      id: newFloorId,
+      floor_number: Number(floorNumber) || floors.length,
+      floor_name: floorName || `Floor ${floors.length + 1}`,
+      stats: { totalRooms: 0, occupiedRooms: 0, availableRooms: 0, reservedRooms: 0 },
+      rooms: [],
+    };
+
+    const updated = [...floors, newFloor];
+    setFloors(updated);
+    localStorage.setItem('residency_floors', JSON.stringify(updated));
+    window.dispatchEvent(new Event('residency_updated'));
+
+    try {
+      await api.post('/floors', {
+        floor_name: floorName,
+        floor_number: Number(floorNumber) || 0,
+      });
+    } catch (e) {
+      /* local state active */
+    }
   }
 
   // Structural Management — Delete Floor
-  function deleteFloor(floorId) {
-    setFloors((prev) => {
-      const updated = prev.filter((f) => f.id !== floorId);
-      localStorage.setItem('residency_floors', JSON.stringify(updated));
-      return updated;
-    });
+  async function deleteFloor(floorId) {
+    const updated = floors.filter((f) => f.id !== floorId);
+    setFloors(updated);
+    localStorage.setItem('residency_floors', JSON.stringify(updated));
+    window.dispatchEvent(new Event('residency_updated'));
+
+    try {
+      if (floorId && !floorId.startsWith('floor-')) {
+        await api.delete(`/floors/${floorId}`);
+      }
+    } catch (e) {
+      /* local state active */
+    }
   }
 
   // Structural Management — Add Room to Floor
-  function addRoom(floorId, roomData) {
-    setFloors((prev) => {
-      const updated = prev.map((f) => {
-        if (f.id === floorId) {
-          const categoryObj = roomData.category || {
-            id: roomData.category_id || 'cat-1',
-            name: roomData.category_name || 'AC Single',
-            base_price: Number(roomData.base_price) || 1500,
-          };
-          const newRoom = {
-            id: `r-${Date.now()}`,
-            room_number: roomData.room_number,
-            status: 'available',
-            category_id: categoryObj.id,
-            room_categories: categoryObj,
-          };
-          return {
-            ...f,
-            rooms: [...(f.rooms || []), newRoom],
-          };
-        }
-        return f;
-      });
-      localStorage.setItem('residency_floors', JSON.stringify(updated));
-      return updated;
+  async function addRoom(floorId, roomData) {
+    const categoryObj = roomData.category || {
+      id: roomData.category_id || 'cat-1',
+      name: roomData.category_name || 'AC Single',
+      base_price: Number(roomData.base_price) || 1500,
+    };
+
+    const newRoom = {
+      id: `r-${Date.now()}`,
+      room_number: roomData.room_number,
+      status: 'available',
+      category_id: categoryObj.id,
+      room_categories: categoryObj,
+    };
+
+    const updated = floors.map((f) => {
+      if (f.id === floorId) {
+        return {
+          ...f,
+          rooms: [...(f.rooms || []), newRoom],
+        };
+      }
+      return f;
     });
+
+    setFloors(updated);
+    localStorage.setItem('residency_floors', JSON.stringify(updated));
+    window.dispatchEvent(new Event('residency_updated'));
+
+    try {
+      await api.post('/rooms', {
+        floor_id: floorId,
+        room_number: roomData.room_number,
+        category_id: categoryObj.id,
+      });
+    } catch (e) {
+      /* local state active */
+    }
   }
 
   // Structural Management — Delete Room
-  function deleteRoom(floorId, roomId) {
-    setFloors((prev) => {
-      const updated = prev.map((f) => {
-        if (f.id === floorId) {
-          return {
-            ...f,
-            rooms: (f.rooms || []).filter((r) => r.id !== roomId),
-          };
-        }
-        return f;
-      });
-      localStorage.setItem('residency_floors', JSON.stringify(updated));
-      return updated;
+  async function deleteRoom(floorId, roomId) {
+    const updated = floors.map((f) => {
+      if (f.id === floorId) {
+        return {
+          ...f,
+          rooms: (f.rooms || []).filter((r) => r.id !== roomId),
+        };
+      }
+      return f;
     });
+
+    setFloors(updated);
+    localStorage.setItem('residency_floors', JSON.stringify(updated));
+    window.dispatchEvent(new Event('residency_updated'));
+
+    try {
+      if (roomId && !roomId.startsWith('r-')) {
+        await api.delete(`/rooms/${roomId}`);
+      }
+    } catch (e) {
+      /* local state active */
+    }
   }
 
   // Complete Data Reset — Wipe all bookings, ledgers & restore available rooms
@@ -247,6 +303,7 @@ export function ResidencyProvider({ children }) {
     localStorage.removeItem('residency_audit_ledger');
     setFloors(INITIAL_MOCK_FLOORS);
     localStorage.setItem('residency_floors', JSON.stringify(INITIAL_MOCK_FLOORS));
+    window.dispatchEvent(new Event('residency_updated'));
   }
 
   const value = {
