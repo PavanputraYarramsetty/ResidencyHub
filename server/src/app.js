@@ -41,9 +41,11 @@ app.use('/api/revenue', revenueRoutes);
 const fs = require('fs');
 
 // Serve frontend static build files in production
-const clientBuildPath = fs.existsSync(path.resolve(process.cwd(), 'client/dist'))
-  ? path.resolve(process.cwd(), 'client/dist')
-  : path.resolve(__dirname, '../../client/dist');
+const clientBuildPath = fs.existsSync(path.resolve(__dirname, '../../client/dist'))
+  ? path.resolve(__dirname, '../../client/dist')
+  : path.resolve(process.cwd(), 'client/dist');
+
+console.log(`📁 Static files serving from: ${clientBuildPath} (exists: ${fs.existsSync(clientBuildPath)})`);
 
 app.use(express.static(clientBuildPath));
 
@@ -54,10 +56,9 @@ app.get('*', (req, res) => {
   }
   const indexPath = path.join(clientBuildPath, 'index.html');
   if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(404).send('Frontend build not found. Please run npm run build.');
+    return res.sendFile(indexPath);
   }
+  res.status(404).send('Frontend build not found. Please ensure npm run build was executed.');
 });
 
 // Global error handler
