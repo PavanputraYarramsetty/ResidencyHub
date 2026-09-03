@@ -48,6 +48,10 @@ export default function Dashboard() {
     return new Date(log.check_out) >= todayStart;
   }).length;
 
+  // Use local counts, fallback to API stats
+  const totalCheckInsToday = todayCheckIns || (stats?.today_check_ins ?? 0);
+  const totalCheckOutsToday = todayCheckOuts || (stats?.today_check_outs ?? 0);
+
   // Compute Total Revenue Today Calculated (Sum of checked-out earnings today + advance collections)
   const todayRevenueLocal = auditLedger.reduce((sum, log) => {
     if (!log.check_out || new Date(log.check_out) < todayStart) return sum;
