@@ -80,10 +80,6 @@ export default function RoomsPage() {
               <span className="font-label-md text-label-md text-secondary uppercase tracking-widest">
                 Sridevi Residency Frontline
               </span>
-              <span className="text-outline-variant font-label-md">•</span>
-              <span className="font-label-md text-label-md text-on-surface-variant font-medium">
-                Terminal #01 (Main Wing)
-              </span>
             </div>
             <h1 className="font-display-sm text-display-sm text-on-surface tracking-tight">
               Room Management & Floor Map

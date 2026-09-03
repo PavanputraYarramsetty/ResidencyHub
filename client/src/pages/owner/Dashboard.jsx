@@ -38,11 +38,6 @@ export default function Dashboard() {
             <span className="font-label-md text-label-md uppercase tracking-wider text-secondary">
               Sridevi Residency Executive Desk
             </span>
-            <span className="w-1 h-1 rounded-full bg-outline-variant" />
-            <span className="font-label-md text-label-md text-on-surface-variant flex items-center gap-space-xxs">
-              <span className="material-symbols-outlined text-[14px] text-on-tertiary-container">verified</span>
-              Terminal #01 Active
-            </span>
           </div>
           <h1 className="font-display-sm text-display-sm text-on-surface">
             Welcome back, {profile?.full_name || 'Front Desk'}
