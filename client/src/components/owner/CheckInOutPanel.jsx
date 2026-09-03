@@ -13,13 +13,18 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Discount & Payment State
+  // Settlement & State Management
   const [discountPercent, setDiscountPercent] = useState('0');
   const [paymentMode, setPaymentMode] = useState('UPI');
+  const [isSettled, setIsSettled] = useState(false);
   const [showPrintInvoice, setShowPrintInvoice] = useState(false);
 
   useEffect(() => {
-    if (isOpen && room?.id) fetchActiveBooking();
+    if (isOpen && room?.id) {
+      setIsSettled(false);
+      setShowPrintInvoice(false);
+      fetchActiveBooking();
+    }
   }, [isOpen, room?.id]);
 
   async function fetchActiveBooking() {
@@ -90,7 +95,12 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
     try {
       setActionLoading(true);
       if (booking?.id) {
-        await bookingService.recordCheckOut(booking.id).catch(() => {});
+        await bookingService.recordCheckOut(booking.id, {
+          net_total: totalSettledAmount,
+          discount_percent: discountVal,
+          discount_amount: discountAmount,
+          payment_mode: paymentMode,
+        }).catch(() => {});
       }
 
       // Mark room available on floor map & save to audit ledger for statistics/revenue
@@ -108,12 +118,13 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
         payment_mode: paymentMode,
       });
 
+      // Turn on settled view to reveal the Generate Bill button
+      setIsSettled(true);
       toast.success(
-        `Room ${room.room_number} checked out! Remaining balance of ${formatCurrency(remainingPayable)} settled ✅`,
+        `Payment of ${formatCurrency(remainingPayable)} received! Room ${room.room_number} checked out ✅ You can now generate the official bill below.`,
         { duration: 6000 }
       );
       onSuccess?.();
-      onClose();
     } catch (err) {
       toast.error('Checkout processed');
     } finally {
@@ -126,7 +137,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
       <Modal
         isOpen={isOpen && !showPrintInvoice}
         onClose={onClose}
-        title={`Room ${room?.room_number || ''} — Guest Stay & Settlement`}
+        title={isSettled ? `Room ${room?.room_number || ''} — Checkout Settled & Completed` : `Room ${room?.room_number || ''} — Guest Stay & Settlement`}
         subtitle={`Category: ${category.name || 'Standard'} • Rate: ${formatCurrency(dailyRate)}/24h • Stay: ${calculatedDays} Day(s)`}
         size="lg"
       >
@@ -136,12 +147,76 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
               <div key={i} className="h-16 rounded-xl bg-surface-container-low animate-pulse" />
             ))}
           </div>
-        ) : !booking && room?.status !== 'occupied' ? (
+        ) : !booking && room?.status !== 'occupied' && !isSettled ? (
           <div className="text-center py-10 space-y-2">
             <p className="font-headline-sm text-headline-sm text-on-surface">No active stay found for this room</p>
             <p className="text-body-sm text-on-surface-variant">Unit is vacant or under housekeeping.</p>
           </div>
+        ) : isSettled ? (
+          /* Post-Payment Settlement Success Screen */
+          <div className="flex flex-col gap-space-lg py-space-sm items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[36px]">verified</span>
+            </div>
+
+            <div className="flex flex-col gap-space-xxs">
+              <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
+                Payment Received & Check-Out Complete!
+              </h2>
+              <p className="text-body-md text-on-surface-variant max-w-md">
+                Remaining payment of <strong className="text-on-surface font-tabular-numeric">{formatCurrency(remainingPayable)}</strong> was settled via <strong>{paymentMode}</strong>. Room {room?.room_number} is now marked Available.
+              </p>
+            </div>
+
+            {/* Final Settlement Receipt Badge */}
+            <div className="w-full bg-surface-container-low rounded-xl p-space-md border border-surface-container-high/60 flex flex-col gap-space-xs text-body-sm font-tabular-numeric text-left">
+              <div className="flex justify-between py-1 border-b border-surface-container-high/40">
+                <span className="text-on-surface-variant">Guest Name:</span>
+                <span className="text-on-surface font-bold">{customer?.full_name || 'In-House Patron'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-surface-container-high/40">
+                <span className="text-on-surface-variant">Gross Room Tariff ({calculatedDays}d):</span>
+                <span className="text-on-surface font-semibold">{formatCurrency(grossTotal)}</span>
+              </div>
+              {advancePaid > 0 && (
+                <div className="flex justify-between py-1 border-b border-surface-container-high/40 text-blue-600">
+                  <span>Advance Paid at Check-In:</span>
+                  <span className="font-bold">-{formatCurrency(advancePaid)}</span>
+                </div>
+              )}
+              {discountAmount > 0 && (
+                <div className="flex justify-between py-1 border-b border-surface-container-high/40 text-emerald-600">
+                  <span>Admin Discount ({discountPercent}%):</span>
+                  <span className="font-bold">-{formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-1 text-base font-bold text-on-surface">
+                <span>Final Paid at Checkout:</span>
+                <span className="text-secondary font-display-sm">{formatCurrency(remainingPayable)}</span>
+              </div>
+            </div>
+
+            {/* Post-Payment Action Buttons */}
+            <div className="flex items-center gap-space-md w-full justify-end pt-space-sm border-t border-surface-container-high/60">
+              <button
+                onClick={onClose}
+                className="px-space-lg py-space-sm rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-lg transition-colors border border-surface-container-high/60 cursor-pointer"
+                type="button"
+              >
+                Close Window
+              </button>
+              <button
+                onClick={() => setShowPrintInvoice(true)}
+                className="px-space-xl py-space-sm rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-label-lg flex items-center gap-space-xs shadow-md transition-all cursor-pointer font-bold"
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[20px]">print</span>
+                <span>Generate & Print Bill</span>
+              </button>
+            </div>
+          </div>
         ) : (
+          /* Active Stay & Settle Payment Screen (Before Customer Pays) */
           <div className="flex flex-col gap-space-md">
             {/* Guest Identity Card */}
             <div className="bg-surface-container-low rounded-xl p-space-md border border-surface-container-high/60 flex flex-col gap-space-xs">
@@ -196,7 +271,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
               <div className="flex justify-between items-center border-b border-surface-container-high/30 pb-space-xs">
                 <span className="font-label-md text-label-md text-surface-variant uppercase">Settlement Breakdown</span>
                 <div className="flex items-baseline gap-space-xs">
-                  <span className="text-xs text-surface-variant">Remaining to Collect:</span>
+                  <span className="text-xs text-surface-variant">Remaining to Pay:</span>
                   <span className="font-tabular-numeric text-headline-sm text-secondary-fixed font-bold">
                     {formatCurrency(remainingPayable)}
                   </span>
@@ -281,26 +356,17 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
               </div>
             </div>
 
-            {/* Action CTAs */}
+            {/* Action CTAs: Check-Out Payment First */}
             <div className="px-space-xl py-space-md -mx-space-xl -mb-space-xl bg-surface-container-low flex items-center justify-between gap-space-sm border-t border-surface-container-high/60 mt-space-sm">
               <button
-                onClick={() => setShowPrintInvoice(true)}
-                className="px-space-md py-space-sm rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-label-lg text-label-lg flex items-center gap-space-xs transition-colors border border-surface-container-high/60 cursor-pointer"
+                onClick={onClose}
+                className="px-space-lg py-space-sm rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-colors border border-surface-container-high/60 cursor-pointer"
                 type="button"
               >
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                <span>Generate Bill / Print Invoice</span>
+                Cancel
               </button>
 
               <div className="flex items-center gap-space-sm">
-                <button
-                  onClick={onClose}
-                  className="px-space-lg py-space-sm rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-colors border border-surface-container-high/60 cursor-pointer"
-                  type="button"
-                >
-                  Cancel
-                </button>
-
                 {isBooked && (
                   <button
                     onClick={handleCheckIn}
@@ -316,10 +382,14 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
                   <button
                     onClick={handleCheckOut}
                     disabled={actionLoading}
-                    className="px-space-xl py-space-sm rounded-lg bg-error text-on-error hover:bg-on-error-container font-label-lg text-label-lg flex items-center gap-space-xs shadow-sm transition-all cursor-pointer"
+                    className="px-space-xl py-space-sm rounded-lg bg-error text-on-error hover:bg-on-error-container font-label-lg text-label-lg flex items-center gap-space-xs shadow-sm transition-all cursor-pointer font-bold"
                   >
-                    <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                    <span>Settle & Check Out ({formatCurrency(remainingPayable)})</span>
+                    {actionLoading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                    )}
+                    <span>Receive {formatCurrency(remainingPayable)} & Settle Check-Out</span>
                   </button>
                 )}
               </div>
