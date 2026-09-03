@@ -3,11 +3,14 @@ import Modal from '../common/Modal';
 import CustomerAutosuggest from './CustomerAutosuggest';
 import { bookingService } from '../../services/bookingService';
 import { useResidency } from '../../context/ResidencyContext';
-import { formatCurrency } from '../../utils/dateFormat';
+import { formatCurrency, formatDateTime } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
 export default function BookingForm({ isOpen, onClose, preselectedRoomId, preselectedRoom, onSuccess }) {
   const { floors, markRoomOccupied } = useResidency();
+
+  // Record exact check-in timestamp when modal is opened
+  const [checkInTime, setCheckInTime] = useState(() => new Date().toISOString());
 
   // Combine rooms from context floors
   const contextRooms = floors.flatMap((f) =>
@@ -28,6 +31,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
   const [gender, setGender] = useState('Male');
   const [address, setAddress] = useState('');
   const [noOfPersons, setNoOfPersons] = useState(1);
+  const [noOfDays, setNoOfDays] = useState(1);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
 
@@ -40,6 +44,12 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (isOpen) {
+      setCheckInTime(new Date().toISOString());
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     const targetId = preselectedRoomId || preselectedRoom?.id;
     if (targetId) {
       setRoomId(targetId);
@@ -50,7 +60,8 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
 
   // Find currently selected room object
   const selectedRoomObj = contextRooms.find((r) => r.id === roomId) || preselectedRoom || contextRooms[0];
-  const roomPrice = selectedRoomObj?.room_categories?.base_price || 0;
+  const ratePerDay = selectedRoomObj?.room_categories?.base_price || 0;
+  const calculatedTotal = ratePerDay * noOfDays;
 
   function handleAadharPhotoChange(e) {
     const file = e.target.files[0];
@@ -97,6 +108,8 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
         gender: gender,
         address: address,
         no_of_persons: parseInt(noOfPersons, 10) || 1,
+        no_of_days: parseInt(noOfDays, 10) || 1,
+        check_in: checkInTime,
         advance_amount: advanceAmount ? parseFloat(advanceAmount) : 0,
       }).catch(() => {});
 
@@ -107,9 +120,15 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
         aadhar_number: aadharNumber,
         address: address,
         no_of_persons: parseInt(noOfPersons, 10) || 1,
+        no_of_days: parseInt(noOfDays, 10) || 1,
+        check_in: checkInTime,
+        rate_per_day: ratePerDay,
+        total_amount: calculatedTotal,
       });
 
-      toast.success(`Room ${selectedRoomObj?.room_number || ''} booked & checked in! Room status is now OCCUPIED 🔴`);
+      toast.success(
+        `Room ${selectedRoomObj?.room_number || ''} booked for ${noOfDays} day(s)! Checked in at ${formatDateTime(checkInTime)} 🔴`
+      );
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -135,8 +154,8 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
           </div>
         </div>
 
-        {/* Selected Room Highlight Badge */}
-        <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex items-center justify-between border border-secondary/30 shadow-xs">
+        {/* Selected Room Highlight Badge & Live Check-In Timestamp */}
+        <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md border border-secondary/30 shadow-xs">
           <div className="flex items-center gap-space-md">
             <div className="w-10 h-10 rounded-xl bg-secondary text-on-secondary flex items-center justify-center font-display-sm text-display-sm font-bold shadow-xs">
               {selectedRoomObj?.room_number || '—'}
@@ -146,13 +165,30 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
                 Room {selectedRoomObj?.room_number} — {selectedRoomObj?.room_categories?.name || 'Standard Unit'}
               </span>
               <span className="font-body-sm text-body-sm text-surface-variant">
-                {selectedRoomObj?.floor_name || 'Main Wing'} • 24h Base Rate: <strong className="text-secondary-fixed">{formatCurrency(roomPrice)}</strong>
+                {selectedRoomObj?.floor_name || 'Main Wing'} • 24h Rate: {formatCurrency(ratePerDay)}/day
               </span>
             </div>
           </div>
-          <span className="px-space-sm py-0.5 rounded font-label-md text-label-md bg-surface-container text-on-surface font-semibold">
-            Auto-Selected
-          </span>
+
+          {/* Check-In Timestamp & Total Calculation Badge */}
+          <div className="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-space-xs md:pt-0 border-surface-container-high/40">
+            <div className="flex flex-col">
+              <span className="font-label-md text-label-md text-surface-variant uppercase flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px] text-secondary">schedule</span>
+                Check-In Time
+              </span>
+              <span className="font-tabular-numeric text-body-md font-bold text-on-primary">
+                {formatDateTime(checkInTime)}
+              </span>
+            </div>
+
+            <div className="flex flex-col items-end">
+              <span className="font-label-md text-label-md text-surface-variant uppercase">Estimated Total</span>
+              <span className="font-tabular-numeric text-headline-sm text-secondary-fixed font-bold">
+                {formatCurrency(calculatedTotal)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* 24-Hour Tariff Policy Callout Banner */}
@@ -163,7 +199,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
               24-Hour Flat Tariff Cycle Policy
             </span>
             <span className="text-on-surface-variant">
-              Guests staying for 1 min, 2 hours, 3 hours, or up to 24 hours are charged the full 24-hour cycle tariff.
+              Guests staying for 1 min, 2 hours, 3 hours, or up to 24 hours are charged the full 24-hour cycle tariff per day.
             </span>
           </div>
         </div>
@@ -194,6 +230,47 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Stay Duration (No of Days) & Check-In Time Preview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+              {/* No of Days Stepper */}
+              <div className="flex flex-col justify-between p-space-sm rounded-lg bg-surface-container-low border border-secondary/40 shadow-xs">
+                <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-secondary">date_range</span>
+                  No of Days
+                </span>
+                <div className="flex items-center justify-between mt-space-xs">
+                  <button
+                    type="button"
+                    onClick={() => setNoOfDays(Math.max(1, noOfDays - 1))}
+                    className="w-8 h-8 rounded bg-surface-container-lowest text-on-surface flex items-center justify-center font-bold text-headline-sm hover:bg-surface-container shadow-xs cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="font-tabular-numeric text-headline-sm font-bold text-secondary">
+                    {noOfDays} {noOfDays > 1 ? 'Days' : 'Day'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setNoOfDays(Math.min(30, noOfDays + 1))}
+                    className="w-8 h-8 rounded bg-surface-container-lowest text-on-surface flex items-center justify-center font-bold text-headline-sm hover:bg-surface-container shadow-xs cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Exact Check-In Timestamp Card */}
+              <div className="flex flex-col justify-between p-space-sm rounded-lg bg-surface-container-low border border-surface-container-high/60">
+                <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-secondary">login</span>
+                  Check-In Timestamp
+                </span>
+                <span className="font-tabular-numeric text-body-sm font-bold text-on-tertiary-container mt-space-xs">
+                  {formatDateTime(checkInTime)}
+                </span>
+              </div>
             </div>
 
             {/* Full Name */}
@@ -418,7 +495,9 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
             <div className="flex flex-col">
               <span className="font-body-sm text-body-sm text-on-surface-variant">Allocated Tariff Summary</span>
               <div className="flex items-center gap-space-xs font-tabular-numeric text-tabular-numeric">
-                <span className="font-bold text-on-surface">24h Tariff: {formatCurrency(roomPrice)}</span>
+                <span className="font-bold text-on-surface">
+                  {formatCurrency(ratePerDay)}/day × {noOfDays}d = <span className="text-secondary font-bold">{formatCurrency(calculatedTotal)}</span>
+                </span>
                 <span className="text-outline-variant">•</span>
                 <span className="text-on-tertiary-container font-bold">Advance Paid: {formatCurrency(advanceAmount || 0)}</span>
               </div>
@@ -443,7 +522,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
               ) : (
                 <span className="material-symbols-outlined text-[18px]">verified_user</span>
               )}
-              <span>Confirm Booking & Check-In</span>
+              <span>Confirm Booking ({formatCurrency(calculatedTotal)})</span>
             </button>
           </div>
         </div>

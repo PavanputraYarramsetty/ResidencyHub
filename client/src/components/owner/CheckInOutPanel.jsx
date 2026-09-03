@@ -95,8 +95,11 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
     );
   }
 
-  // Base price calculation (1 min or 2 hrs or 3 hrs = 1 24h slab minimum)
-  const basePrice = billingPreview?.total || Number(booking?.rate_per_day || category.base_price || 1000);
+  // Base price calculation (considers booked days or elapsed 24h cycle slabs)
+  const daysBooked = booking?.no_of_days || 1;
+  const dailyRate = Number(booking?.rate_per_day || category.base_price || 1000);
+  const calculatedDays = Math.max(daysBooked, billingPreview?.billableDays || 1);
+  const basePrice = booking?.total_amount || (dailyRate * calculatedDays);
   const discountVal = parseFloat(discountPercent) || 0;
   const discountAmount = Math.round((basePrice * discountVal) / 100);
   const netTotal = Math.max(0, basePrice - discountAmount);
