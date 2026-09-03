@@ -3,38 +3,7 @@ import api from '../../services/api';
 import { formatDateTime } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
-const MOCK_GUESTS = [
-  {
-    id: 'cust-1',
-    full_name: 'Satyanarayana Murthy',
-    phone: '98480 22338',
-    age: 38,
-    gender: 'Male',
-    address: 'D.No 4-12, Main Road, Rajahmundry, AP',
-    aadhar_number: '4523 8891 0042',
-    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-  },
-  {
-    id: 'cust-2',
-    full_name: 'K. V. Rao',
-    phone: '94910 08797',
-    age: 44,
-    gender: 'Male',
-    address: 'Sector 2, MVP Colony, Visakhapatnam',
-    aadhar_number: '8821 3340 9912',
-    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-  },
-  {
-    id: 'cust-3',
-    full_name: 'P. Nageswara Rao',
-    phone: '98480 11223',
-    age: 42,
-    gender: 'Male',
-    address: 'Brodipet, Guntur, AP',
-    aadhar_number: '7721 9904 1123',
-    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
-  },
-];
+const MOCK_GUESTS = [];
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);

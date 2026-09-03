@@ -12,48 +12,7 @@ const MOCK_CATEGORIES = [
   { id: 'cat-5', name: 'Deluxe Suite', base_price: 3000, max_occupancy: 3 },
 ];
 
-const INITIAL_MOCK_FLOORS = [
-  {
-    id: 'floor-ground',
-    floor_number: 0,
-    floor_name: 'Ground Floor',
-    stats: { totalRooms: 5, occupiedRooms: 0, availableRooms: 5, reservedRooms: 0 },
-    rooms: [
-      { id: 'r101', room_number: '101', status: 'available', category_id: 'cat-3', room_categories: MOCK_CATEGORIES[2] },
-      { id: 'r102', room_number: '102', status: 'available', category_id: 'cat-3', room_categories: MOCK_CATEGORIES[2] },
-      { id: 'r103', room_number: '103', status: 'available', category_id: 'cat-4', room_categories: MOCK_CATEGORIES[3] },
-      { id: 'r104', room_number: '104', status: 'available', category_id: 'cat-4', room_categories: MOCK_CATEGORIES[3] },
-      { id: 'r105', room_number: '105', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
-    ]
-  },
-  {
-    id: 'floor-1st',
-    floor_number: 1,
-    floor_name: '1st Floor',
-    stats: { totalRooms: 6, occupiedRooms: 0, availableRooms: 6, reservedRooms: 0 },
-    rooms: [
-      { id: 'r201', room_number: '201', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
-      { id: 'r202', room_number: '202', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
-      { id: 'r203', room_number: '203', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
-      { id: 'r204', room_number: '204', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
-      { id: 'r205', room_number: '205', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
-      { id: 'r206', room_number: '206', status: 'available', category_id: 'cat-5', room_categories: MOCK_CATEGORIES[4] },
-    ]
-  },
-  {
-    id: 'floor-2nd',
-    floor_number: 2,
-    floor_name: '2nd Floor',
-    stats: { totalRooms: 5, occupiedRooms: 0, availableRooms: 5, reservedRooms: 0 },
-    rooms: [
-      { id: 'r301', room_number: '301', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
-      { id: 'r302', room_number: '302', status: 'available', category_id: 'cat-2', room_categories: MOCK_CATEGORIES[1] },
-      { id: 'r303', room_number: '303', status: 'available', category_id: 'cat-5', room_categories: MOCK_CATEGORIES[4] },
-      { id: 'r304', room_number: '304', status: 'available', category_id: 'cat-5', room_categories: MOCK_CATEGORIES[4] },
-      { id: 'r305', room_number: '305', status: 'available', category_id: 'cat-1', room_categories: MOCK_CATEGORIES[0] },
-    ]
-  }
-];
+const INITIAL_MOCK_FLOORS = [];
 
 export function ResidencyProvider({ children }) {
   const { isAuthenticated } = useAuth();
@@ -64,7 +23,7 @@ export function ResidencyProvider({ children }) {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
-    return INITIAL_MOCK_FLOORS;
+    return [];
   });
 
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
