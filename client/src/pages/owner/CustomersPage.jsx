@@ -50,16 +50,66 @@ export default function CustomersPage() {
     try {
       setLoading(true);
       const { data } = await api.get('/customers');
-      const list = Array.isArray(data) ? data : (data?.customers || []);
-      
-      // Merge with mock/saved guests if list is empty or offline
-      if (list && list.length > 0) {
-        setCustomers(list);
-        setSelectedGuest(list[0]);
-      } else {
-        setCustomers(MOCK_GUESTS);
-        setSelectedGuest(MOCK_GUESTS[0]);
+      let apiList = Array.isArray(data) ? data : (data?.customers || []);
+      if (!apiList || apiList.length === 0) {
+        apiList = MOCK_GUESTS;
       }
+
+      // Collect local walk-in guests from localStorage floors & audit ledger
+      const localFloors = JSON.parse(localStorage.getItem('residency_floors') || '[]');
+      const auditLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
+      
+      const localGuestsMap = new Map();
+
+      // Extract guests from active room bookings
+      localFloors.forEach((f) => {
+        (f.rooms || []).forEach((r) => {
+          if (r.active_booking?.customers) {
+            const c = r.active_booking.customers;
+            if (c.phone) {
+              localGuestsMap.set(c.phone, {
+                id: `guest-${c.phone}`,
+                full_name: c.full_name || 'Guest',
+                phone: c.phone,
+                aadhar_number: c.aadhar_number || '—',
+                address: c.address || '—',
+                age: c.age || 30,
+                gender: c.gender || 'Male',
+                created_at: r.active_booking.check_in || new Date().toISOString(),
+                status: 'In-House Patron (Occupied)',
+              });
+            }
+          }
+        });
+      });
+
+      // Extract guests from checkout audit ledger
+      auditLedger.forEach((log) => {
+        if (log.customers?.phone) {
+          const c = log.customers;
+          if (!localGuestsMap.has(c.phone)) {
+            localGuestsMap.set(c.phone, {
+              id: `guest-${c.phone}`,
+              full_name: c.full_name || 'Guest',
+              phone: c.phone,
+              aadhar_number: c.aadhar_number || '—',
+              address: c.address || '—',
+              age: c.age || 30,
+              gender: c.gender || 'Male',
+              created_at: log.check_out || new Date().toISOString(),
+              status: 'Checked Out',
+            });
+          }
+        }
+      });
+
+      // Merge API list with local guests (avoiding duplicates by phone)
+      const existingPhones = new Set(apiList.map((g) => g.phone));
+      const newLocalGuests = Array.from(localGuestsMap.values()).filter((g) => !existingPhones.has(g.phone));
+
+      const combinedList = [...newLocalGuests, ...apiList];
+      setCustomers(combinedList);
+      setSelectedGuest(combinedList[0] || null);
     } catch (err) {
       setCustomers(MOCK_GUESTS);
       setSelectedGuest(MOCK_GUESTS[0]);
