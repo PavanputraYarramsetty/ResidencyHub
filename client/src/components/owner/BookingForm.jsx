@@ -122,6 +122,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
         no_of_persons: parseInt(noOfPersons, 10) || 1,
         no_of_days: parseInt(noOfDays, 10) || 1,
         check_in: checkInTime,
+        advance_amount: advanceAmount ? parseFloat(advanceAmount) : 0,
         rate_per_day: ratePerDay,
         total_amount: calculatedTotal,
       });

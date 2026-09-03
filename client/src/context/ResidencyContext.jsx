@@ -148,6 +148,7 @@ export function ResidencyProvider({ children }) {
           if (room.id === roomId || String(room.room_number) === String(roomId)) {
             const dailyRate = bookingData.rate_per_day || room.room_categories?.base_price || 1000;
             const days = bookingData.no_of_days || 1;
+            const advance = Number(bookingData.advance_amount || 0);
             return {
               ...room,
               status: 'occupied',
@@ -159,10 +160,11 @@ export function ResidencyProvider({ children }) {
                   aadhar_number: bookingData.aadhar_number,
                   address: bookingData.address,
                 },
-                check_in: new Date().toISOString(),
+                check_in: bookingData.check_in || new Date().toISOString(),
                 rate_per_day: dailyRate,
                 no_of_persons: bookingData.no_of_persons || 1,
                 no_of_days: days,
+                advance_amount: advance,
                 total_amount: bookingData.total_amount || dailyRate * days,
                 status: 'checked_in',
               },

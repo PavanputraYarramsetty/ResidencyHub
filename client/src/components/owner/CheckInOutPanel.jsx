@@ -49,38 +49,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
     }
   }
 
-  async function handleCheckOut() {
-    try {
-      setActionLoading(true);
-      if (booking?.id) {
-        await bookingService.recordCheckOut(booking.id).catch(() => {});
-      }
-
-      // Mark room available on floor map & save to audit ledger for statistics/revenue
-      markRoomAvailable(room.id, {
-        room_number: room.room_number,
-        category_name: category.name,
-        full_name: customer?.full_name || 'Guest',
-        phone: customer?.phone || '—',
-        check_in: booking?.check_in || new Date().toISOString(),
-        billable_days: 1,
-        net_total: netTotal,
-        payment_mode: paymentMode,
-      });
-
-      toast.success(
-        `Room ${room.room_number} checked out! Total ${formatCurrency(netTotal)} added to Revenue & Statistics ✅`,
-        { duration: 6000 }
-      );
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      toast.error('Checkout processed');
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
+  // Tariff & Advance calculations
   const customer = booking?.customers;
   const category = room?.room_categories || {};
   const isCheckedIn = booking?.status === 'checked_in' || room?.status === 'occupied';
@@ -95,14 +64,62 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
     );
   }
 
-  // Base price calculation (considers booked days or elapsed 24h cycle slabs)
+  // Base gross total calculation
   const daysBooked = booking?.no_of_days || 1;
   const dailyRate = Number(booking?.rate_per_day || category.base_price || 1000);
   const calculatedDays = Math.max(daysBooked, billingPreview?.billableDays || 1);
-  const basePrice = booking?.total_amount || (dailyRate * calculatedDays);
+  const grossTotal = booking?.total_amount || (dailyRate * calculatedDays);
+
+  // Advance paid at check-in
+  const advancePaid = Number(booking?.advance_amount || 0);
+
+  // Remaining gross balance before discount
+  const remainingBeforeDiscount = Math.max(0, grossTotal - advancePaid);
+
+  // Discount applied on remaining balance
   const discountVal = parseFloat(discountPercent) || 0;
-  const discountAmount = Math.round((basePrice * discountVal) / 100);
-  const netTotal = Math.max(0, basePrice - discountAmount);
+  const discountAmount = Math.round((remainingBeforeDiscount * discountVal) / 100);
+
+  // Net amount payable at checkout
+  const remainingPayable = Math.max(0, remainingBeforeDiscount - discountAmount);
+
+  // Total collected = advancePaid + remainingPayable
+  const totalSettledAmount = advancePaid + remainingPayable;
+
+  async function handleCheckOut() {
+    try {
+      setActionLoading(true);
+      if (booking?.id) {
+        await bookingService.recordCheckOut(booking.id).catch(() => {});
+      }
+
+      // Mark room available on floor map & save to audit ledger for statistics/revenue
+      markRoomAvailable(room.id, {
+        room_number: room.room_number,
+        category_name: category.name,
+        full_name: customer?.full_name || 'Guest',
+        phone: customer?.phone || '—',
+        check_in: booking?.check_in || new Date().toISOString(),
+        billable_days: calculatedDays,
+        net_total: totalSettledAmount,
+        advance_paid: advancePaid,
+        remaining_paid: remainingPayable,
+        discount_amount: discountAmount,
+        payment_mode: paymentMode,
+      });
+
+      toast.success(
+        `Room ${room.room_number} checked out! Remaining balance of ${formatCurrency(remainingPayable)} settled ✅`,
+        { duration: 6000 }
+      );
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      toast.error('Checkout processed');
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   return (
     <>
@@ -110,7 +127,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
         isOpen={isOpen && !showPrintInvoice}
         onClose={onClose}
         title={`Room ${room?.room_number || ''} — Guest Stay & Settlement`}
-        subtitle={`Category: ${category.name || 'Standard'} • Rate: ${formatCurrency(booking?.rate_per_day || category.base_price || 0)}/24h`}
+        subtitle={`Category: ${category.name || 'Standard'} • Rate: ${formatCurrency(dailyRate)}/24h • Stay: ${calculatedDays} Day(s)`}
         size="lg"
       >
         {loading ? (
@@ -152,7 +169,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
               </div>
             </div>
 
-            {/* Timeline Box */}
+            {/* Timeline & Duration Box */}
             <div className="bg-surface-container-low rounded-xl p-space-md border border-surface-container-high/60 flex flex-col gap-space-xs">
               <span className="font-label-md text-label-md uppercase tracking-wider text-secondary flex items-center gap-space-xs">
                 <span className="material-symbols-outlined text-[16px]">schedule</span>
@@ -166,28 +183,53 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-t border-surface-container-high/40">
-                  <span className="text-on-surface-variant">Billing Rule:</span>
-                  <span className="text-secondary font-bold">
-                    Minimum 24h Flat Tariff Slab applied for any stay duration
+                  <span className="text-on-surface-variant">Stay Duration / Slabs:</span>
+                  <span className="text-on-surface font-bold">
+                    {calculatedDays} Day(s) ({formatCurrency(dailyRate)}/day)
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Billing & Admin Discount Box */}
-            <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex flex-col gap-space-sm shadow-sm">
-              <div className="flex justify-between items-center">
-                <span className="font-label-md text-label-md text-surface-variant uppercase">Settlement Calculation</span>
-                <span className="font-tabular-numeric text-headline-sm text-secondary-fixed font-bold">
-                  Net Total: {formatCurrency(netTotal)}
-                </span>
+            {/* Settlement Breakdown Box: Advance Paid, Discount, Remaining Balance */}
+            <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex flex-col gap-space-md shadow-sm">
+              <div className="flex justify-between items-center border-b border-surface-container-high/30 pb-space-xs">
+                <span className="font-label-md text-label-md text-surface-variant uppercase">Settlement Breakdown</span>
+                <div className="flex items-baseline gap-space-xs">
+                  <span className="text-xs text-surface-variant">Remaining to Collect:</span>
+                  <span className="font-tabular-numeric text-headline-sm text-secondary-fixed font-bold">
+                    {formatCurrency(remainingPayable)}
+                  </span>
+                </div>
               </div>
 
-              {/* Admin Discount Entry Box */}
+              {/* 3-Part Financial Summary Strip */}
+              <div className="grid grid-cols-3 gap-space-sm text-center">
+                <div className="p-space-xs rounded-lg bg-surface-container flex flex-col">
+                  <span className="text-[11px] text-surface-variant uppercase font-medium">Gross Total</span>
+                  <span className="font-tabular-numeric font-bold text-on-primary text-body-lg">
+                    {formatCurrency(grossTotal)}
+                  </span>
+                </div>
+                <div className="p-space-xs rounded-lg bg-surface-container flex flex-col">
+                  <span className="text-[11px] text-on-tertiary-container uppercase font-medium">Advance Paid</span>
+                  <span className="font-tabular-numeric font-bold text-on-tertiary-container text-body-lg">
+                    {formatCurrency(advancePaid)}
+                  </span>
+                </div>
+                <div className="p-space-xs rounded-lg bg-surface-container-highest flex flex-col border border-secondary/40">
+                  <span className="text-[11px] text-secondary-fixed uppercase font-bold">Balance Due</span>
+                  <span className="font-tabular-numeric font-bold text-secondary-fixed text-body-lg">
+                    {formatCurrency(remainingPayable)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Admin Discount Entry Box (Applied on remaining amount) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md pt-space-xs border-t border-surface-container-high/30">
                 <div className="flex flex-col gap-space-xxs">
                   <label className="text-body-sm text-surface-variant font-medium">
-                    Admin Discount (%)
+                    Admin Discount on Balance (%)
                   </label>
                   <div className="flex rounded-lg overflow-hidden border border-surface-container-high/60 bg-surface-container">
                     <input
@@ -206,7 +248,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
                 </div>
 
                 <div className="flex flex-col justify-end text-body-sm text-surface-variant text-right">
-                  <div>Base Tariff: <span className="font-tabular-numeric text-on-primary font-semibold">{formatCurrency(basePrice)}</span></div>
+                  <div>Remaining Balance: <span className="font-tabular-numeric text-on-primary font-semibold">{formatCurrency(remainingBeforeDiscount)}</span></div>
                   {discountAmount > 0 && (
                     <div className="text-secondary-container font-semibold">
                       Discount ({discountPercent}%): -{formatCurrency(discountAmount)}
@@ -218,7 +260,9 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
 
             {/* Payment Mode Selection */}
             <div className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low border border-surface-container-high/60">
-              <span className="font-label-md text-label-md text-on-surface font-semibold">Payment Method:</span>
+              <span className="font-label-md text-label-md text-on-surface font-semibold">
+                Settlement Mode (for {formatCurrency(remainingPayable)}):
+              </span>
               <div className="flex items-center gap-space-xs">
                 {['UPI', 'Cash', 'Card'].map((mode) => (
                   <button
@@ -275,7 +319,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
                     className="px-space-xl py-space-sm rounded-lg bg-error text-on-error hover:bg-on-error-container font-label-lg text-label-lg flex items-center gap-space-xs shadow-sm transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                    <span>Record Check-Out & Bill</span>
+                    <span>Settle & Check Out ({formatCurrency(remainingPayable)})</span>
                   </button>
                 )}
               </div>
@@ -284,7 +328,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
         )}
       </Modal>
 
-      {/* Printable Invoice Modal */}
+      {/* Printable Invoice Modal with Complete Breakdown */}
       {showPrintInvoice && (
         <Modal
           isOpen={showPrintInvoice}
@@ -322,7 +366,7 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
                 <span className="font-bold text-slate-500 uppercase block mb-1">Stay Particulars</span>
                 <div>Room Unit: <strong>Room {room?.room_number} ({category.name})</strong></div>
                 <div>Check-In: <strong>{booking?.check_in ? formatDateTime(booking.check_in) : 'Active Stay'}</strong></div>
-                <div>Occupancy Rule: <strong>24-Hour Tariff Cycle</strong></div>
+                <div>Stay Duration: <strong>{calculatedDays} Day(s) @ {formatCurrency(dailyRate)}/day</strong></div>
               </div>
             </div>
 
@@ -332,22 +376,30 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 uppercase font-bold">
                   <th className="py-2 px-3">Description</th>
                   <th className="py-2 px-3 text-right">Cycle Slabs</th>
-                  <th className="py-2 px-3 text-right">Rate</th>
+                  <th className="py-2 px-3 text-right">Daily Rate</th>
                   <th className="py-2 px-3 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
                 <tr>
                   <td className="py-2 px-3 font-sans">
-                    Room {room?.room_number} Occupancy Tariff
+                    Room {room?.room_number} Occupancy Tariff ({calculatedDays} Day{calculatedDays > 1 ? 's' : ''})
                   </td>
-                  <td className="py-2 px-3 text-right">1 Slab (24h)</td>
-                  <td className="py-2 px-3 text-right">{formatCurrency(basePrice)}</td>
-                  <td className="py-2 px-3 text-right">{formatCurrency(basePrice)}</td>
+                  <td className="py-2 px-3 text-right">{calculatedDays} Slab(s)</td>
+                  <td className="py-2 px-3 text-right">{formatCurrency(dailyRate)}</td>
+                  <td className="py-2 px-3 text-right">{formatCurrency(grossTotal)}</td>
                 </tr>
+                {advancePaid > 0 && (
+                  <tr className="text-blue-700 font-semibold">
+                    <td className="py-2 px-3 font-sans">Less: Advance Paid at Check-In</td>
+                    <td className="py-2 px-3 text-right">—</td>
+                    <td className="py-2 px-3 text-right">—</td>
+                    <td className="py-2 px-3 text-right">-{formatCurrency(advancePaid)}</td>
+                  </tr>
+                )}
                 {discountAmount > 0 && (
                   <tr className="text-emerald-700 font-semibold">
-                    <td className="py-2 px-3 font-sans">Special Admin Discount ({discountPercent}%)</td>
+                    <td className="py-2 px-3 font-sans">Less: Admin Discount ({discountPercent}% on Balance)</td>
                     <td className="py-2 px-3 text-right">—</td>
                     <td className="py-2 px-3 text-right">—</td>
                     <td className="py-2 px-3 text-right">-{formatCurrency(discountAmount)}</td>
@@ -360,11 +412,13 @@ export default function CheckInOutPanel({ isOpen, onClose, room, onSuccess }) {
             <div className="flex items-center justify-between pt-space-md border-t border-slate-200">
               <div className="flex flex-col text-xs text-slate-500">
                 <span>Payment Mode: <strong>{paymentMode}</strong></span>
+                <span>Gross Total: <strong>{formatCurrency(grossTotal)}</strong></span>
+                <span>Advance Paid: <strong>{formatCurrency(advancePaid)}</strong></span>
                 <span>Status: <strong>SETTLED & PAID</strong></span>
               </div>
               <div className="text-right flex flex-col">
-                <span className="text-xs font-bold text-slate-500 uppercase">Net Amount Payable</span>
-                <span className="text-2xl font-bold font-mono text-slate-950">{formatCurrency(netTotal)}</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">Remaining Paid at Checkout</span>
+                <span className="text-2xl font-bold font-mono text-slate-950">{formatCurrency(remainingPayable)}</span>
               </div>
             </div>
 
