@@ -8,7 +8,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, loginAsDemo } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -27,10 +27,14 @@ export default function Login() {
     }
   }
 
-  function handleDemoLogin(role) {
-    loginAsDemo(role);
-    toast.success(`Logged in as ${role === 'admin' ? 'System Admin' : 'Front Desk Owner'} 🎉`);
-    navigate(role === 'admin' ? '/admin' : '/');
+  function fillTestCredentials(type) {
+    if (type === 'admin') {
+      setEmail('admin@sridevi.com');
+      setPassword('AdminPassword@123');
+    } else {
+      setEmail('owner@sridevi.com');
+      setPassword('OwnerPassword@123');
+    }
   }
 
   return (
@@ -47,41 +51,30 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Quick Instant Demo Buttons */}
+        {/* Test Credentials Reference Callout */}
         <div className="p-space-md rounded-xl bg-surface-container-low border border-surface-container-high/60 flex flex-col gap-space-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-label-md text-label-md text-secondary uppercase font-bold tracking-wider flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">bolt</span>
-              Instant Demo Access
-            </span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">1-Click Login</span>
-          </div>
-          <div className="grid grid-cols-2 gap-space-xs">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('owner')}
-              className="py-space-xs px-space-sm rounded-lg bg-secondary text-on-secondary font-label-md text-label-md font-bold hover:bg-on-secondary-container transition-colors shadow-xs flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">desk</span>
-              <span>Demo Owner</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('admin')}
-              className="py-space-xs px-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold hover:bg-primary transition-colors shadow-xs flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">admin_panel_settings</span>
-              <span>Demo Admin</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="relative flex items-center justify-center">
-          <div className="border-t border-surface-container-high/60 w-full" />
-          <span className="bg-surface-container-lowest px-space-sm font-label-md text-label-md text-on-surface-variant uppercase absolute">
-            Or Account Sign In
+          <span className="font-label-md text-label-md text-secondary uppercase font-bold tracking-wider flex items-center gap-1">
+            <span className="material-symbols-outlined text-[16px]">key</span>
+            Test Credentials
           </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-xs text-body-sm pt-1">
+            <button
+              type="button"
+              onClick={() => fillTestCredentials('owner')}
+              className="p-space-xs rounded-lg bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high/60 text-left transition-colors cursor-pointer"
+            >
+              <div className="font-label-md text-label-md text-on-surface font-bold">Owner Access</div>
+              <div className="text-[11px] text-on-surface-variant font-mono">owner@sridevi.com</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => fillTestCredentials('admin')}
+              className="p-space-xs rounded-lg bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high/60 text-left transition-colors cursor-pointer"
+            >
+              <div className="font-label-md text-label-md text-on-surface font-bold">Admin Access</div>
+              <div className="text-[11px] text-on-surface-variant font-mono">admin@sridevi.com</div>
+            </button>
+          </div>
         </div>
 
         {/* Form */}
@@ -93,7 +86,7 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@sridevi.com"
+              placeholder="owner@sridevi.com"
               className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none border border-surface-container-high/60"
             />
           </div>
