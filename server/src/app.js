@@ -18,6 +18,8 @@ const path = require('path');
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false,
+  crossOriginEmbedderPolicy: false,
 }));
 app.use(cors({
   origin: '*',
@@ -40,14 +42,18 @@ app.use('/api/revenue', revenueRoutes);
 
 const fs = require('fs');
 
-// Serve frontend static build files in production
+// Resolve path to client build directory
 const clientBuildPath = fs.existsSync(path.resolve(__dirname, '../../client/dist'))
   ? path.resolve(__dirname, '../../client/dist')
   : path.resolve(process.cwd(), 'client/dist');
 
 console.log(`📁 Static files serving from: ${clientBuildPath} (exists: ${fs.existsSync(clientBuildPath)})`);
 
-app.use(express.static(clientBuildPath));
+// Serve all static assets from Vite build
+app.use(express.static(clientBuildPath, {
+  maxAge: '1h',
+  etag: true,
+}));
 
 // Fallback all non-API GET requests to frontend SPA index.html
 app.get('*', (req, res) => {
