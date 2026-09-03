@@ -29,6 +29,29 @@ export default function Dashboard() {
   const availableRooms = Math.max(0, totalRooms - occupiedRooms);
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
+  // Today's Movements — derived from actual room data + checkout audit ledger
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayISO = todayStart.toISOString();
+
+  // Count today's check-ins from currently occupied rooms
+  const allRooms = floors.flatMap((f) => f.rooms || []);
+  const todayCheckIns = allRooms.filter((r) => {
+    if (r.status !== 'occupied' || !r.active_booking?.check_in) return false;
+    return new Date(r.active_booking.check_in) >= todayStart;
+  }).length;
+
+  // Count today's check-outs from the audit ledger stored in localStorage
+  const auditLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
+  const todayCheckOuts = auditLedger.filter((log) => {
+    if (!log.check_out) return false;
+    return new Date(log.check_out) >= todayStart;
+  }).length;
+
+  // Use local counts, fallback to API stats
+  const totalCheckInsToday = todayCheckIns || (stats?.today_check_ins ?? 0);
+  const totalCheckOutsToday = todayCheckOuts || (stats?.today_check_outs ?? 0);
+
   return (
     <div className="flex flex-col w-full pb-space-3xl gap-space-lg px-space-lg">
       {/* Top Welcome Header */}
@@ -162,11 +185,11 @@ export default function Dashboard() {
               </span>
               <div className="flex items-center gap-space-md mt-space-xs font-tabular-numeric">
                 <span className="font-display-sm text-display-sm text-on-tertiary-container">
-                  +{stats?.today_check_ins ?? 0}
+                  +{totalCheckInsToday}
                 </span>
                 <span className="text-outline-variant font-label-md">•</span>
                 <span className="font-display-sm text-display-sm text-error">
-                  -{stats?.today_check_outs ?? 0}
+                  -{totalCheckOutsToday}
                 </span>
               </div>
             </div>
@@ -175,8 +198,8 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="mt-space-md flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant pt-space-xs">
-            <span>Check-Ins: {stats?.today_check_ins ?? 0}</span>
-            <span>Check-Outs: {stats?.today_check_outs ?? 0}</span>
+            <span>Check-Ins: {totalCheckInsToday}</span>
+            <span>Check-Outs: {totalCheckOutsToday}</span>
           </div>
         </div>
       </div>
