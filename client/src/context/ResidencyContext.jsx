@@ -108,11 +108,11 @@ export function ResidencyProvider({ children }) {
 
   // Mark room occupied
   function markRoomOccupied(roomId, bookingData) {
-    setFloors((prevFloors) =>
-      prevFloors.map((floor) => ({
+    setFloors((prevFloors) => {
+      const updated = prevFloors.map((floor) => ({
         ...floor,
         rooms: (floor.rooms || []).map((room) => {
-          if (room.id === roomId) {
+          if (room.id === roomId || String(room.room_number) === String(roomId)) {
             return {
               ...room,
               status: 'occupied',
@@ -133,8 +133,10 @@ export function ResidencyProvider({ children }) {
           }
           return room;
         }),
-      }))
-    );
+      }));
+      localStorage.setItem('residency_floors', JSON.stringify(updated));
+      return updated;
+    });
   }
 
   // Mark room available on checkout

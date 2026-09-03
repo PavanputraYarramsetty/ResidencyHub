@@ -65,16 +65,47 @@ async function getBooking(req, res) {
 // POST /api/bookings — Create a new booking
 async function createBooking(req, res) {
   try {
-    const { room_id, customer_id, no_of_persons, booking_date, rate_per_day } = req.body;
+    let { room_id, customer_id, no_of_persons, booking_date, rate_per_day, full_name, phone, aadhar_number, age, address } = req.body;
+    const { residency_id } = req.profile;
 
-    if (!room_id || !customer_id || !booking_date || !rate_per_day) {
-      return res.status(400).json({ error: 'room_id, customer_id, booking_date, and rate_per_day are required' });
+    if (!room_id) {
+      return res.status(400).json({ error: 'room_id is required' });
     }
 
-    // Check if room is available
+    // If customer details passed directly, find or create customer
+    if (!customer_id && (phone || full_name)) {
+      const { data: existing } = await supabaseAdmin
+        .from('customers')
+        .select('id')
+        .eq('residency_id', residency_id)
+        .eq('phone', phone || '')
+        .maybeSingle();
+
+      if (existing) {
+        customer_id = existing.id;
+      } else {
+        const { data: newCust, error: custErr } = await supabaseAdmin
+          .from('customers')
+          .insert({
+            residency_id,
+            full_name: full_name || 'Guest',
+            phone: phone || '',
+            aadhar_number: aadhar_number || '',
+            age: age || null,
+            address: address || ''
+          })
+          .select('id')
+          .single();
+
+        if (custErr) throw custErr;
+        customer_id = newCust.id;
+      }
+    }
+
+    // Check if room exists and get details
     const { data: room } = await supabaseAdmin
       .from('rooms')
-      .select('status')
+      .select('*, room_categories(base_price)')
       .eq('id', room_id)
       .single();
 
@@ -83,16 +114,20 @@ async function createBooking(req, res) {
       return res.status(409).json({ error: 'Room is not available for booking' });
     }
 
-    // Create booking
+    const effectiveRate = rate_per_day || room.room_categories?.base_price || 1000;
+    const effectiveDate = booking_date || new Date().toISOString().split('T')[0];
+
+    // Create booking and immediately check-in
     const { data: booking, error } = await supabaseAdmin
       .from('bookings')
       .insert({
         room_id,
         customer_id,
         no_of_persons: no_of_persons || 1,
-        booking_date,
-        rate_per_day,
-        status: 'booked',
+        booking_date: effectiveDate,
+        check_in: new Date().toISOString(),
+        rate_per_day: effectiveRate,
+        status: 'checked_in',
         created_by: req.profile.id
       })
       .select(`
@@ -104,10 +139,10 @@ async function createBooking(req, res) {
 
     if (error) throw error;
 
-    // Update room status to reserved (booked but not checked in)
+    // Update room status directly to occupied (red)
     await supabaseAdmin
       .from('rooms')
-      .update({ status: 'reserved' })
+      .update({ status: 'occupied' })
       .eq('id', room_id);
 
     logger.success(`Booking created for room ${booking.rooms.room_number}`);
