@@ -149,7 +149,7 @@ export default function Dashboard() {
                   {availableRooms}
                 </span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  of {totalRooms || 16} Total
+                  of {totalRooms} Total
                 </span>
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function Dashboard() {
             <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
               <div
                 className="bg-on-tertiary-container h-full rounded-full"
-                style={{ width: `${totalRooms ? (availableRooms / totalRooms) * 100 : 100}%` }}
+                style={{ width: `${totalRooms ? (availableRooms / totalRooms) * 100 : 0}%` }}
               />
             </div>
           </div>

@@ -31,7 +31,7 @@ export default function Navbar({ mobileSidebarOpen, setMobileSidebarOpen }) {
 
           <div className="hidden xl:flex items-center gap-space-xs">
             <div className="px-space-md py-space-xs rounded-full bg-surface-container-low text-on-surface font-label-md text-label-md">
-              {totalRooms || 16} Total Rooms
+              {totalRooms} Total Rooms
             </div>
             <div className="px-space-md py-space-xs rounded-full bg-surface-container-highest text-on-tertiary-container font-label-md text-label-md flex items-center gap-space-xxs">
               <span className="w-1.5 h-1.5 rounded-full bg-on-tertiary-container" />
