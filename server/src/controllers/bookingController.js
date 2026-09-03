@@ -233,13 +233,18 @@ async function recordCheckOut(req, res) {
       booking.rate_per_day
     );
 
-    // Update booking with checkout + billing
+    const { discount_percent, discount_amount, payment_mode } = req.body;
+
+    // Update booking with checkout + billing + discount
     const { data: updated, error } = await supabaseAdmin
       .from('bookings')
       .update({
         check_out: checkOutTime,
         billable_days: billableDays,
-        total_amount: totalAmount,
+        total_amount: req.body.net_total !== undefined ? req.body.net_total : totalAmount,
+        discount_percent: discount_percent || 0,
+        discount_amount: discount_amount || 0,
+        payment_mode: payment_mode || 'UPI',
         status: 'checked_out'
       })
       .eq('id', id)
