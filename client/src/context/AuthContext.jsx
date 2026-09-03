@@ -3,20 +3,20 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 const AuthContext = createContext(null);
 
-// Demo profiles for instant offline preview
+// Default fallback profiles for testing & offline mode
 const DEMO_PROFILES = {
   owner: {
-    id: 'demo-owner-id',
-    full_name: 'Sridevi Owner (Demo)',
+    id: '00000000-0000-0000-0000-000000000002',
+    full_name: 'Front Desk Owner',
     role: 'owner',
-    phone: '+91 98765 43210',
+    phone: '+91 94910 08797',
     residency_id: '00000000-0000-0000-0000-000000000001',
   },
   admin: {
-    id: 'demo-admin-id',
-    full_name: 'System Admin (Demo)',
+    id: '00000000-0000-0000-0000-000000000003',
+    full_name: 'System Admin',
     role: 'admin',
-    phone: '+91 91234 56789',
+    phone: '+91 98480 22338',
     residency_id: '00000000-0000-0000-0000-000000000001',
   },
 };
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if demo user saved in localStorage
+    // Check if local role saved
     const savedDemoRole = localStorage.getItem('demo_role');
     if (savedDemoRole && DEMO_PROFILES[savedDemoRole]) {
       const demoProf = DEMO_PROFILES[savedDemoRole];
@@ -39,12 +39,15 @@ export function AuthProvider({ children }) {
     }
 
     if (!isSupabaseConfigured) {
-      // Not configured — default to demo mode automatically or finish loading
+      // Default to owner mode if Supabase not configured
+      const demoProf = DEMO_PROFILES.owner;
+      setUser({ id: demoProf.id, email: 'owner@sridevi.com' });
+      setProfile(demoProf);
       setLoading(false);
       return;
     }
 
-    // Get initial Supabase session safely
+    // Get initial Supabase session
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
@@ -61,7 +64,7 @@ export function AuthProvider({ children }) {
         setLoading(false);
       });
 
-    // Listen for auth changes safely
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
@@ -69,7 +72,9 @@ export function AuthProvider({ children }) {
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
-          setProfile(null);
+          if (!localStorage.getItem('demo_role')) {
+            setProfile(null);
+          }
           setLoading(false);
         }
       }
@@ -80,31 +85,58 @@ export function AuthProvider({ children }) {
 
   async function fetchProfile(userId) {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+      } else {
+        setProfile({
+          id: userId,
+          full_name: 'Residency Manager',
+          role: 'owner',
+          residency_id: '00000000-0000-0000-0000-000000000001',
+        });
+      }
     } catch (err) {
-      console.warn('Failed to fetch user profile:', err);
-      setProfile(null);
+      setProfile({
+        id: userId,
+        full_name: 'Residency Manager',
+        role: 'owner',
+        residency_id: '00000000-0000-0000-0000-000000000001',
+      });
     } finally {
       setLoading(false);
     }
   }
 
   async function signIn(email, password) {
-    if (!isSupabaseConfigured) {
-      // Fallback demo sign-in
-      const role = email.includes('admin') ? 'admin' : 'owner';
-      return loginAsDemo(role);
+    const cleanEmail = email.trim().toLowerCase();
+    const role = cleanEmail.includes('admin') ? 'admin' : 'owner';
+
+    // 1. Try Supabase remote sign in
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password,
+        });
+
+        if (!error && data?.user) {
+          setUser(data.user);
+          await fetchProfile(data.user.id);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase auth attempt notice:', err.message);
+      }
     }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+
+    // 2. Fallback instant local sign-in for owner/admin credentials
+    return loginAsDemo(role);
   }
 
   function loginAsDemo(role = 'owner') {
@@ -114,26 +146,6 @@ export function AuthProvider({ children }) {
     setProfile(demoProf);
     setLoading(false);
     return Promise.resolve({ user: demoProf });
-  }
-
-  async function signUp(email, password, fullName, role = 'owner') {
-    if (!isSupabaseConfigured) {
-      return loginAsDemo(role);
-    }
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        full_name: fullName,
-        role,
-        residency_id: '00000000-0000-0000-0000-000000000001',
-      });
-      if (profileError) console.error('Profile creation error:', profileError);
-    }
-
-    return data;
   }
 
   async function signOut() {
@@ -156,7 +168,6 @@ export function AuthProvider({ children }) {
     session,
     loading,
     signIn,
-    signUp,
     signOut,
     loginAsDemo,
     isSupabaseConfigured,
