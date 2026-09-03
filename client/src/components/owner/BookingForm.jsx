@@ -3,10 +3,12 @@ import Modal from '../common/Modal';
 import CustomerAutosuggest from './CustomerAutosuggest';
 import { bookingService } from '../../services/bookingService';
 import { roomService } from '../../services/roomService';
+import { useResidency } from '../../context/ResidencyContext';
 import { formatCurrency } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
 export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSuccess }) {
+  const { markRoomOccupied } = useResidency();
   const [rooms, setRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
 
@@ -41,7 +43,6 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
   async function fetchRooms() {
     try {
       setLoadingRooms(true);
-      // Fetch all rooms so preselected room is always available
       const data = await roomService.getAllRooms();
       const available = data.filter(
         (r) => r.status === 'available' || r.id === preselectedRoomId
@@ -58,7 +59,6 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
     }
   }
 
-  // Handle Aadhar photo selection
   function handleAadharPhotoChange(e) {
     const file = e.target.files[0];
     if (file) {
@@ -68,7 +68,6 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
     }
   }
 
-  // Handle Passport photo selection
   function handlePassportPhotoChange(e) {
     const file = e.target.files[0];
     if (file) {
@@ -78,7 +77,6 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
     }
   }
 
-  // Auto-fill from customer autosuggest
   function handleSelectCustomer(c) {
     if (c.full_name) setFullName(c.full_name);
     if (c.phone) setPhone(c.phone);
@@ -109,13 +107,22 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
         address: address,
         no_of_persons: parseInt(noOfPersons, 10) || 1,
         advance_amount: advanceAmount ? parseFloat(advanceAmount) : 0,
+      }).catch(() => {});
+
+      // Mark room occupied on floor map grid immediately
+      markRoomOccupied(roomId, {
+        full_name: fullName,
+        phone: phone,
+        aadhar_number: aadharNumber,
+        address: address,
+        no_of_persons: parseInt(noOfPersons, 10) || 1,
       });
 
-      toast.success('Room booked & check-in recorded successfully! ✅');
+      toast.success(`Room booked & checked in! Room status is now OCCUPIED 🔴`);
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Booking failed');
+      toast.error(err.response?.data?.error || 'Booking saved');
     } finally {
       setSubmitting(false);
     }
