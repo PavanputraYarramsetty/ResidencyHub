@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -11,12 +12,18 @@ function AppLayout() {
   const location = useLocation();
   const isAuthPage = ['/login', '/signup'].includes(location.pathname);
 
+  // Responsive sidebar state
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-surface-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-surface-500 font-medium">Loading Sridevi Residency...</p>
+          <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-600 font-semibold tracking-wide text-sm">
+            Loading Sridevi Residency...
+          </p>
         </div>
       </div>
     );
@@ -28,11 +35,25 @@ function AppLayout() {
 
   return (
     <ResidencyProvider>
-      <div className="min-h-screen bg-surface-50">
-        <Navbar />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-64px)]">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+        {/* Global Luxury Header */}
+        <Navbar
+          mobileSidebarOpen={mobileSidebarOpen}
+          setMobileSidebarOpen={setMobileSidebarOpen}
+        />
+
+        {/* Content Layout */}
+        <div className="flex flex-1 w-full max-w-[1680px] mx-auto">
+          {/* Sidebar */}
+          <Sidebar
+            mobileOpen={mobileSidebarOpen}
+            setMobileOpen={setMobileSidebarOpen}
+            collapsed={sidebarCollapsed}
+            setCollapsed={setSidebarCollapsed}
+          />
+
+          {/* Main Page Area */}
+          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 transition-all">
             <AppRoutes />
           </main>
         </div>
@@ -49,17 +70,19 @@ export default function App() {
         toastOptions={{
           duration: 4000,
           style: {
-            borderRadius: '12px',
-            background: '#1e293b',
-            color: '#f1f5f9',
-            fontSize: '14px',
-            fontWeight: '500',
+            borderRadius: '14px',
+            background: '#0F172A',
+            color: '#F8FAFC',
+            fontSize: '13px',
+            fontWeight: '600',
+            boxShadow: '0 10px 30px -4px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
           },
           success: {
-            iconTheme: { primary: '#10b981', secondary: '#fff' },
+            iconTheme: { primary: '#10B981', secondary: '#FFFFFF' },
           },
           error: {
-            iconTheme: { primary: '#ef4444', secondary: '#fff' },
+            iconTheme: { primary: '#EF4444', secondary: '#FFFFFF' },
           },
         }}
       />

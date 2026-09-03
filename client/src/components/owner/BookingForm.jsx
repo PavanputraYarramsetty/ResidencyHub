@@ -126,15 +126,15 @@ export default function BookingForm({ isOpen, onClose, room, onSuccess }) {
     <Modal isOpen={isOpen} onClose={onClose} title={`Book Room ${room?.room_number || ''}`} size="lg">
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Room info banner */}
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-brand-50 border border-brand-100">
-          <div className="p-2 rounded-lg bg-brand-100">
-            <CreditCard className="w-5 h-5 text-brand-600" />
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200/90 shadow-sm">
+          <div className="p-2 rounded-xl bg-amber-500/15 text-amber-700">
+            <CreditCard className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-brand-700">
+            <p className="text-sm font-extrabold text-slate-900">
               Room {room?.room_number} — {category.name}
             </p>
-            <p className="text-xs text-brand-500">₹{Number(category.base_price || 0).toLocaleString()} per day</p>
+            <p className="text-xs font-semibold text-amber-700">₹{Number(category.base_price || 0).toLocaleString()} / 24-Hour Cycle</p>
           </div>
         </div>
 
@@ -297,25 +297,25 @@ export default function BookingForm({ isOpen, onClose, room, onSuccess }) {
         </div>
 
         {/* Submit */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-surface-200">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-100 transition-colors"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-brand-700 shadow-lg shadow-brand-600/25 hover:shadow-xl transition-all disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 shadow-gold hover:from-amber-300 hover:to-amber-400 transition-all disabled:opacity-50"
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Creating Booking...
+                <div className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
+                Confirming Stay...
               </span>
-            ) : 'Create Booking'}
+            ) : 'Confirm & Check-In'}
           </button>
         </div>
       </form>

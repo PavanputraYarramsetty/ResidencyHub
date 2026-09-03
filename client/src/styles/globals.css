@@ -1,151 +1,185 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
-   Sridevi Residency — Global Styles
-   Navy/Gold Premium Theme
+   Sridevi Residency — Luxury Hospitality Design System
+   Royal Navy + Warm Champagne Gold + Polished Slate
    ============================================================ */
 
-@theme {
-  /* Brand Colors — Navy/Gold */
-  --color-brand-50: #f0f4ff;
-  --color-brand-100: #dbe4ff;
-  --color-brand-200: #bac8ff;
-  --color-brand-300: #91a7ff;
-  --color-brand-400: #748ffc;
-  --color-brand-500: #5c7cfa;
-  --color-brand-600: #4c6ef5;
-  --color-brand-700: #4263eb;
-  --color-brand-800: #3b5bdb;
-  --color-brand-900: #364fc7;
-  --color-brand-950: #1e293b;
+:root {
+  /* Brand Primary - Deep Royal Navy */
+  --brand-950: #0B132B;
+  --brand-900: #111C44;
+  --brand-850: #162456;
+  --brand-800: #1C2E6C;
+  --brand-700: #253D8C;
+  --brand-600: #3251B5;
+  --brand-500: #4364D8;
+  --brand-100: #E8EDFF;
+  --brand-50:  #F4F6FF;
 
-  /* Gold Accent */
-  --color-gold-50: #fffbeb;
-  --color-gold-100: #fef3c7;
-  --color-gold-200: #fde68a;
-  --color-gold-300: #fcd34d;
-  --color-gold-400: #fbbf24;
-  --color-gold-500: #f59e0b;
-  --color-gold-600: #d97706;
-  --color-gold-700: #b45309;
-  --color-gold-800: #92400e;
-  --color-gold-900: #78350f;
+  /* Luxury Champagne Gold */
+  --gold-700: #8D6B18;
+  --gold-600: #B88B22;
+  --gold-500: #D4A838;
+  --gold-400: #E8BF53;
+  --gold-300: #F3D57F;
+  --gold-100: #FEF8E7;
+  --gold-50:  #FFFDF7;
 
-  /* Room Status Colors */
-  --color-room-available: #10b981;
-  --color-room-available-light: #d1fae5;
-  --color-room-occupied: #ef4444;
-  --color-room-occupied-light: #fee2e2;
-  --color-room-reserved: #f59e0b;
-  --color-room-reserved-light: #fef3c7;
-  --color-room-maintenance: #6b7280;
+  /* Room Status System */
+  --status-available:       #059669;
+  --status-available-bg:    #ECFDF5;
+  --status-available-border:#A7F3D0;
+  --status-available-glow:  rgba(16, 185, 129, 0.25);
 
-  /* Surface Colors */
-  --color-surface-50: #f8fafc;
-  --color-surface-100: #f1f5f9;
-  --color-surface-200: #e2e8f0;
-  --color-surface-300: #cbd5e1;
-  --color-surface-400: #94a3b8;
-  --color-surface-500: #64748b;
-  --color-surface-600: #475569;
-  --color-surface-700: #334155;
-  --color-surface-800: #1e293b;
-  --color-surface-900: #0f172a;
-  --color-surface-950: #020617;
+  --status-occupied:        #DC2626;
+  --status-occupied-bg:     #FEF2F2;
+  --status-occupied-border: #FECACA;
+  --status-occupied-glow:   rgba(239, 68, 68, 0.25);
+
+  --status-reserved:        #D97706;
+  --status-reserved-bg:     #FFFBEB;
+  --status-reserved-border: #FDE68A;
+  --status-reserved-glow:   rgba(245, 158, 11, 0.25);
+
+  /* Surface Neutrals */
+  --bg-page:   #F8FAFC;
+  --bg-card:   #FFFFFF;
+  --border-subtle: #E2E8F0;
+  --border-medium: #CBD5E1;
+  --text-main: #0F172A;
+  --text-muted:#64748B;
+  --text-light:#94A3B8;
 }
 
-
-/* Base styles */
+/* Base resets & typography */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
+html, body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--color-surface-50);
-  color: var(--color-surface-900);
+  background-color: var(--bg-page);
+  color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-/* Custom scrollbar */
+/* Custom Luxury Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: var(--color-surface-100);
+  background: #F1F5F9;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: var(--color-surface-400);
-  border-radius: 3px;
+  background: #CBD5E1;
+  border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-surface-500);
+  background: #94A3B8;
 }
 
-/* Skeleton loader animation */
-@keyframes shimmer {
+/* Premium Shadows & Elevation */
+.shadow-luxury-sm {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.shadow-luxury {
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+}
+
+.shadow-luxury-lg {
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+}
+
+.shadow-gold {
+  box-shadow: 0 8px 24px -4px rgba(212, 168, 56, 0.35);
+}
+
+/* Glass & Card Surfaces */
+.glass-header {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+/* Luxury Room Card State Styling */
+.room-card-available {
+  background: #FFFFFF;
+  border: 1.5px solid #A7F3D0;
+  box-shadow: 0 4px 16px -2px rgba(16, 185, 129, 0.08);
+}
+.room-card-available:hover {
+  border-color: #059669;
+  box-shadow: 0 10px 25px -3px rgba(16, 185, 129, 0.2);
+}
+
+.room-card-occupied {
+  background: #FFFFFF;
+  border: 1.5px solid #FECACA;
+  box-shadow: 0 4px 16px -2px rgba(239, 68, 68, 0.08);
+}
+.room-card-occupied:hover {
+  border-color: #DC2626;
+  box-shadow: 0 10px 25px -3px rgba(239, 68, 68, 0.2);
+}
+
+.room-card-reserved {
+  background: #FFFFFF;
+  border: 1.5px solid #FDE68A;
+  box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.08);
+}
+.room-card-reserved:hover {
+  border-color: #D97706;
+  box-shadow: 0 10px 25px -3px rgba(245, 158, 11, 0.2);
+}
+
+/* Pulsing Badge Indicators */
+.pulse-available {
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse-green 2s infinite;
+}
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.pulse-occupied {
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: pulse-red 2s infinite;
+}
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Skeleton Loading Shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: shimmer-anim 1.5s ease-in-out infinite;
+}
+@keyframes shimmer-anim {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
-}
-
-.skeleton {
-  background: linear-gradient(90deg, var(--color-surface-200) 25%, var(--color-surface-100) 50%, var(--color-surface-200) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 8px;
-}
-
-/* Glass morphism utility */
-.glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.glass-dark {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Count-up animation */
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-count-up {
-  animation: countUp 0.5s ease-out forwards;
-}
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, var(--color-brand-600), var(--color-gold-500));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Room status transition */
-.room-status-transition {
-  transition: background-color 500ms ease-in-out, box-shadow 500ms ease-in-out, border-color 500ms ease-in-out;
 }
