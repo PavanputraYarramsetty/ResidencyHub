@@ -4,10 +4,11 @@
   "description": "Sridevi Residency — Lodge/Hotel Management System",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "npm install && npm install --prefix server && npm install --prefix client && npm run build --prefix client",
+    "start": "node server/src/server.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm start",
-    "client": "cd client && npm run dev",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
+    "client": "cd client && npm run dev"
   },
   "keywords": ["hotel", "lodge", "management", "residency"],
   "author": "Sridevi Residency",

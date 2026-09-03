@@ -13,10 +13,14 @@ const revenueRoutes = require('./routes/revenue.routes');
 
 const app = express();
 
+const path = require('path');
+
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: '*',
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -34,9 +38,16 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/revenue', revenueRoutes);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// Serve frontend static build files in production
+const clientBuildPath = path.resolve(__dirname, '../../client/dist');
+app.use(express.static(clientBuildPath));
+
+// Fallback all non-API GET requests to frontend SPA index.html
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
 // Global error handler
