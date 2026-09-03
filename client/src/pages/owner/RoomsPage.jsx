@@ -283,6 +283,7 @@ export default function RoomsPage() {
             setBookingRoom(null);
           }}
           preselectedRoomId={bookingRoom?.id}
+          preselectedRoom={bookingRoom}
           onSuccess={() => {
             refreshData();
             setShowBookingForm(false);

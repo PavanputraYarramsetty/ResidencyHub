@@ -2,18 +2,25 @@ import { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import CustomerAutosuggest from './CustomerAutosuggest';
 import { bookingService } from '../../services/bookingService';
-import { roomService } from '../../services/roomService';
 import { useResidency } from '../../context/ResidencyContext';
 import { formatCurrency } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
-export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSuccess }) {
-  const { markRoomOccupied } = useResidency();
-  const [rooms, setRooms] = useState([]);
-  const [loadingRooms, setLoadingRooms] = useState(true);
+export default function BookingForm({ isOpen, onClose, preselectedRoomId, preselectedRoom, onSuccess }) {
+  const { floors, markRoomOccupied } = useResidency();
+
+  // Combine rooms from context floors
+  const contextRooms = floors.flatMap((f) =>
+    (f.rooms || []).map((r) => ({
+      ...r,
+      floor_name: f.floor_name,
+    }))
+  );
+
+  const initialRoomId = preselectedRoomId || preselectedRoom?.id || (contextRooms.length > 0 ? contextRooms[0].id : '');
 
   // Form State
-  const [roomId, setRoomId] = useState(preselectedRoomId || '');
+  const [roomId, setRoomId] = useState(initialRoomId);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [aadharNumber, setAadharNumber] = useState('');
@@ -33,31 +40,17 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) fetchRooms();
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (preselectedRoomId) setRoomId(preselectedRoomId);
-  }, [preselectedRoomId]);
-
-  async function fetchRooms() {
-    try {
-      setLoadingRooms(true);
-      const data = await roomService.getAllRooms();
-      const available = data.filter(
-        (r) => r.status === 'available' || r.id === preselectedRoomId
-      );
-      setRooms(available.length > 0 ? available : data);
-
-      if (!roomId && available.length > 0) {
-        setRoomId(available[0].id);
-      }
-    } catch (err) {
-      console.warn('Failed to load room list');
-    } finally {
-      setLoadingRooms(false);
+    const targetId = preselectedRoomId || preselectedRoom?.id;
+    if (targetId) {
+      setRoomId(targetId);
+    } else if (contextRooms.length > 0 && !roomId) {
+      setRoomId(contextRooms[0].id);
     }
-  }
+  }, [preselectedRoomId, preselectedRoom, isOpen]);
+
+  // Find currently selected room object
+  const selectedRoomObj = contextRooms.find((r) => r.id === roomId) || preselectedRoom || contextRooms[0];
+  const roomPrice = selectedRoomObj?.room_categories?.base_price || 0;
 
   function handleAadharPhotoChange(e) {
     const file = e.target.files[0];
@@ -87,18 +80,16 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
     toast.success(`Auto-filled details for ${c.full_name}! ✨`);
   }
 
-  const selectedRoomObj = rooms.find((r) => r.id === roomId);
-  const roomPrice = selectedRoomObj?.room_categories?.base_price || 0;
-
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!roomId) return toast.error('Please select a target room');
+    const activeTargetId = roomId || selectedRoomObj?.id;
+    if (!activeTargetId) return toast.error('Please select a target room');
     if (!fullName || !phone) return toast.error('Please fill in guest name and phone number');
 
     try {
       setSubmitting(true);
       await bookingService.createBooking({
-        room_id: roomId,
+        room_id: activeTargetId,
         full_name: fullName,
         phone: phone,
         aadhar_number: aadharNumber,
@@ -110,7 +101,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
       }).catch(() => {});
 
       // Mark room occupied on floor map grid immediately
-      markRoomOccupied(roomId, {
+      markRoomOccupied(activeTargetId, {
         full_name: fullName,
         phone: phone,
         aadhar_number: aadharNumber,
@@ -118,11 +109,11 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
         no_of_persons: parseInt(noOfPersons, 10) || 1,
       });
 
-      toast.success(`Room booked & checked in! Room status is now OCCUPIED 🔴`);
+      toast.success(`Room ${selectedRoomObj?.room_number || ''} booked & checked in! Room status is now OCCUPIED 🔴`);
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Booking saved');
+      toast.error('Booking saved');
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +123,7 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Instant Room Booking & Check-In"
+      title={`Instant Room Booking — Room ${selectedRoomObj?.room_number || 'Unit'}`}
       subtitle="Sridevi Residency • 24-Hour Cycle Ledger Policy"
       size="xl"
     >
@@ -142,6 +133,26 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
           <div className="flex-1">
             <CustomerAutosuggest onSelectCustomer={handleSelectCustomer} />
           </div>
+        </div>
+
+        {/* Selected Room Highlight Badge */}
+        <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex items-center justify-between border border-secondary/30 shadow-xs">
+          <div className="flex items-center gap-space-md">
+            <div className="w-10 h-10 rounded-xl bg-secondary text-on-secondary flex items-center justify-center font-display-sm text-display-sm font-bold shadow-xs">
+              {selectedRoomObj?.room_number || '—'}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-headline-sm text-headline-sm font-bold text-on-primary">
+                Room {selectedRoomObj?.room_number} — {selectedRoomObj?.room_categories?.name || 'Standard Unit'}
+              </span>
+              <span className="font-body-sm text-body-sm text-surface-variant">
+                {selectedRoomObj?.floor_name || 'Main Wing'} • 24h Base Rate: <strong className="text-secondary-fixed">{formatCurrency(roomPrice)}</strong>
+              </span>
+            </div>
+          </div>
+          <span className="px-space-sm py-0.5 rounded font-label-md text-label-md bg-surface-container text-on-surface font-semibold">
+            Auto-Selected
+          </span>
         </div>
 
         {/* 24-Hour Tariff Policy Callout Banner */}
@@ -169,23 +180,19 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, onSucc
               <span className="font-body-sm text-body-sm text-on-surface-variant">* Required Fields</span>
             </div>
 
-            {/* Target Room Selection */}
+            {/* Target Room Selection Dropdown */}
             <div className="flex flex-col gap-space-xxs">
-              <label className="font-label-md text-label-md text-on-surface font-medium">Selected Room *</label>
+              <label className="font-label-md text-label-md text-on-surface font-medium">Target Room Unit *</label>
               <select
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
-                className="w-full bg-surface-container-low text-on-surface font-body-md text-body-md p-space-sm rounded-lg focus:outline-none cursor-pointer border border-surface-container-high/60"
+                className="w-full bg-surface-container-low text-on-surface font-body-md text-body-md p-space-sm rounded-lg focus:outline-none cursor-pointer border border-surface-container-high/60 font-semibold"
               >
-                {loadingRooms ? (
-                  <option>Loading available units...</option>
-                ) : (
-                  rooms.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      Room {r.room_number} — ({r.room_categories?.name || 'Standard'} - {formatCurrency(r.room_categories?.base_price || 0)}/24h)
-                    </option>
-                  ))
-                )}
+                {contextRooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    Room {r.room_number} — ({r.room_categories?.name || 'Standard'} - {formatCurrency(r.room_categories?.base_price || 0)}/24h)
+                  </option>
+                ))}
               </select>
             </div>
 
