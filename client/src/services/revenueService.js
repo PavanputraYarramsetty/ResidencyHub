@@ -1,16 +1,14 @@
-import api from './api';
+import api from '../lib/api';
 
 export const revenueService = {
-  // Full revenue summary with breakdown by date, floor, category
-  async getRevenueSummary(params = {}) {
-    const { data } = await api.get('/revenue', { params });
-    return data;
+  getRevenueSummary: async (params) => {
+    const res = await api.get('/revenue', { params });
+    return res.data;
   },
-
-  // Flat list of completed booking records for the ledger table
-  async getRevenue(params = {}) {
-    const { data } = await api.get('/revenue', { params });
-    // Return the flat bookings array for the ledger view
-    return data?.bookings || data || [];
+  getStatistics: async (params) => {
+    const res = await api.get('/statistics/bookings', { params });
+    return res.data;
   },
 };
+
+export default revenueService;

@@ -11,6 +11,7 @@ const {
 router.use(authenticate);
 
 router.get('/stats/today', getTodayStats);
+router.get('/today-stats', getTodayStats);
 router.get('/', getBookings);
 router.get('/:id', getBooking);
 router.post('/', requireRole('owner', 'staff', 'admin'), createBooking);

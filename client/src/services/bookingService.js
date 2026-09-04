@@ -1,42 +1,34 @@
-import api from './api';
+import api from '../lib/api';
 
 export const bookingService = {
-  async getBookings(params = {}) {
-    const { data } = await api.get('/bookings', { params });
-    return data;
+  getBookings: async (params) => {
+    const res = await api.get('/bookings', { params });
+    return res.data;
   },
-
-  async getBooking(bookingId) {
-    const { data } = await api.get(`/bookings/${bookingId}`);
-    return data;
+  getBookingById: async (id) => {
+    const res = await api.get(`/bookings/${id}`);
+    return res.data;
   },
-
-  async createBooking(bookingData) {
-    const { data } = await api.post('/bookings', bookingData);
-    return data;
+  createBooking: async (bookingData) => {
+    const res = await api.post('/bookings', bookingData);
+    return res.data;
   },
-
-  async recordCheckIn(bookingId, checkInTime = null) {
-    const { data } = await api.put(`/bookings/${bookingId}/checkin`, {
-      check_in: checkInTime || new Date().toISOString(),
-    });
-    return data;
+  checkIn: async (id, payload = {}) => {
+    const res = await api.post(`/bookings/${id}/check-in`, payload);
+    return res.data;
   },
-
-  async recordCheckOut(bookingId, checkOutTime = null) {
-    const { data } = await api.put(`/bookings/${bookingId}/checkout`, {
-      check_out: checkOutTime || new Date().toISOString(),
-    });
-    return data;
+  checkOut: async (id, payload = {}) => {
+    const res = await api.post(`/bookings/${id}/checkout`, payload);
+    return res.data;
   },
-
-  async cancelBooking(bookingId) {
-    const { data } = await api.put(`/bookings/${bookingId}/cancel`);
-    return data;
+  cancelBooking: async (id) => {
+    const res = await api.post(`/bookings/${id}/cancel`);
+    return res.data;
   },
-
-  async getTodayStats() {
-    const { data } = await api.get('/bookings/stats/today');
-    return data;
+  getTodayStats: async () => {
+    const res = await api.get('/bookings/today-stats');
+    return res.data;
   },
 };
+
+export default bookingService;

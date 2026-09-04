@@ -1,16 +1,20 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import api from '../services/api';
+import api from '../lib/api';
+
 
 const ResidencyContext = createContext(null);
 
 const MOCK_CATEGORIES = [
-  { id: 'cat-1', name: 'AC Single', base_price: 1500, max_occupancy: 1 },
-  { id: 'cat-2', name: 'AC Double', base_price: 2000, max_occupancy: 2 },
-  { id: 'cat-3', name: 'Non-AC Single', base_price: 800, max_occupancy: 1 },
-  { id: 'cat-4', name: 'Non-AC Double', base_price: 1200, max_occupancy: 2 },
-  { id: 'cat-5', name: 'Deluxe Suite', base_price: 3000, max_occupancy: 3 },
+  { id: '00000000-0000-0000-0000-000000000101', name: 'AC Single', base_price: 1500, price_per_24_hours: 1500, max_occupancy: 1, max_persons: 1, amenities: ['AC', 'TV', 'Attached Bathroom', 'WiFi'] },
+  { id: '00000000-0000-0000-0000-000000000102', name: 'AC Double', base_price: 2000, price_per_24_hours: 2000, max_occupancy: 2, max_persons: 2, amenities: ['AC', 'TV', 'Attached Bathroom', 'WiFi', 'Geyser'] },
+  { id: '00000000-0000-0000-0000-000000000103', name: 'AC Triple', base_price: 2500, price_per_24_hours: 2500, max_occupancy: 3, max_persons: 3, amenities: ['AC', 'TV', 'Attached Bathroom', 'WiFi', 'Geyser'] },
+  { id: '00000000-0000-0000-0000-000000000104', name: 'Non-AC Single', base_price: 800, price_per_24_hours: 800, max_occupancy: 1, max_persons: 1, amenities: ['Fan', 'TV', 'Attached Bathroom'] },
+  { id: '00000000-0000-0000-0000-000000000105', name: 'Non-AC Double', base_price: 1200, price_per_24_hours: 1200, max_occupancy: 2, max_persons: 2, amenities: ['Fan', 'TV', 'Attached Bathroom'] },
+  { id: '00000000-0000-0000-0000-000000000106', name: 'Non-AC Triple', base_price: 1600, price_per_24_hours: 1600, max_occupancy: 3, max_persons: 3, amenities: ['Fan', 'TV', 'Attached Bathroom'] },
+  { id: '00000000-0000-0000-0000-000000000107', name: 'Deluxe Suite', base_price: 3500, price_per_24_hours: 3500, max_occupancy: 4, max_persons: 4, amenities: ['AC', 'Smart TV', 'Bathtub', 'High-speed WiFi', 'Mini Fridge', 'Room Service'] },
 ];
+
 
 const INITIAL_MOCK_FLOORS = [];
 

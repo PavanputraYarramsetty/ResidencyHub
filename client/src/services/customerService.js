@@ -1,38 +1,30 @@
-import api from './api';
+import api from '../lib/api';
 
 export const customerService = {
-  async getCustomers(params = {}) {
-    const { data } = await api.get('/customers', { params });
-    return data;
+  getCustomers: async (params) => {
+    const res = await api.get('/customers', { params });
+    return res.data;
   },
-
-  async searchCustomers(query) {
-    const { data } = await api.get(`/customers/search?q=${encodeURIComponent(query)}`);
-    return data;
+  searchCustomers: async (query) => {
+    const res = await api.get(`/customers/search`, { params: { query } });
+    return res.data;
   },
-
-  async getCustomer(customerId) {
-    const { data } = await api.get(`/customers/${customerId}`);
-    return data;
+  getCustomerById: async (id) => {
+    const res = await api.get(`/customers/${id}`);
+    return res.data;
   },
-
-  async createCustomer(customerData) {
-    const { data } = await api.post('/customers', customerData);
-    return data;
+  createCustomer: async (customerData) => {
+    const res = await api.post('/customers', customerData);
+    return res.data;
   },
-
-  async findOrCreateCustomer(customerData) {
-    const { data } = await api.post('/customers/find-or-create', customerData);
-    return data;
+  updateCustomer: async (id, customerData) => {
+    const res = await api.put(`/customers/${id}`, customerData);
+    return res.data;
   },
-
-  async updateCustomer(customerId, updates) {
-    const { data } = await api.put(`/customers/${customerId}`, updates);
-    return data;
-  },
-
-  async deleteCustomer(customerId) {
-    const { data } = await api.delete(`/customers/${customerId}`);
-    return data;
+  deleteCustomer: async (id) => {
+    const res = await api.delete(`/customers/${id}`);
+    return res.data;
   },
 };
+
+export default customerService;

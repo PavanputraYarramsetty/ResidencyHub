@@ -1,28 +1,42 @@
-import api from './api';
+import api from '../lib/api';
 
 export const roomService = {
-  async getRoomsByFloor(floorId) {
-    const { data } = await api.get(`/rooms?floor_id=${floorId}`);
-    return data;
+  getRooms: async (params) => {
+    const res = await api.get('/rooms', { params });
+    return res.data;
   },
-
-  async getRoom(roomId) {
-    const { data } = await api.get(`/rooms/${roomId}`);
-    return data;
+  getRoomById: async (id) => {
+    const res = await api.get(`/rooms/${id}`);
+    return res.data;
   },
-
-  async createRoom(roomData) {
-    const { data } = await api.post('/rooms', roomData);
-    return data;
+  createRoom: async (roomData) => {
+    const res = await api.post('/rooms', roomData);
+    return res.data;
   },
-
-  async updateRoom(roomId, updates) {
-    const { data } = await api.put(`/rooms/${roomId}`, updates);
-    return data;
+  updateRoom: async (id, roomData) => {
+    const res = await api.put(`/rooms/${id}`, roomData);
+    return res.data;
   },
-
-  async deleteRoom(roomId) {
-    const { data } = await api.delete(`/rooms/${roomId}`);
-    return data;
+  deleteRoom: async (id) => {
+    const res = await api.delete(`/rooms/${id}`);
+    return res.data;
+  },
+  getCategories: async () => {
+    const res = await api.get('/rooms/categories');
+    return res.data;
+  },
+  createCategory: async (categoryData) => {
+    const res = await api.post('/room-categories', categoryData);
+    return res.data;
+  },
+  updateCategory: async (id, categoryData) => {
+    const res = await api.put(`/room-categories/${id}`, categoryData);
+    return res.data;
+  },
+  deleteCategory: async (id) => {
+    const res = await api.delete(`/room-categories/${id}`);
+    return res.data;
   },
 };
+
+export default roomService;

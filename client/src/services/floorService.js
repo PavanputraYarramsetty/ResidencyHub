@@ -1,23 +1,22 @@
-import api from './api';
+import api from '../lib/api';
 
 export const floorService = {
-  async getFloors() {
-    const { data } = await api.get('/floors');
-    return data;
+  getFloors: async () => {
+    const res = await api.get('/floors');
+    return res.data;
   },
-
-  async createFloor(floorData) {
-    const { data } = await api.post('/floors', floorData);
-    return data;
+  createFloor: async (floorData) => {
+    const res = await api.post('/floors', floorData);
+    return res.data;
   },
-
-  async updateFloor(floorId, updates) {
-    const { data } = await api.put(`/floors/${floorId}`, updates);
-    return data;
+  updateFloor: async (id, floorData) => {
+    const res = await api.put(`/floors/${id}`, floorData);
+    return res.data;
   },
-
-  async deleteFloor(floorId) {
-    const { data } = await api.delete(`/floors/${floorId}`);
-    return data;
+  deleteFloor: async (id) => {
+    const res = await api.delete(`/floors/${id}`);
+    return res.data;
   },
 };
+
+export default floorService;

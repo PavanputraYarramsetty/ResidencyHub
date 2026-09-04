@@ -4,16 +4,19 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
+const fs = require('fs');
 
+const authRoutes = require('./routes/authRoutes');
 const floorRoutes = require('./routes/floors.routes');
 const roomRoutes = require('./routes/rooms.routes');
+const categoryRoutes = require('./routes/categoryRoutes');
 const customerRoutes = require('./routes/customers.routes');
 const bookingRoutes = require('./routes/bookings.routes');
 const revenueRoutes = require('./routes/revenue.routes');
+const statsRoutes = require('./routes/statsRoutes');
 
 const app = express();
-
-const path = require('path');
 
 // Middleware
 app.use(helmet({
@@ -30,51 +33,49 @@ app.use(morgan('dev'));
 
 // Health check
 app.get(['/health', '/api/health'], (req, res) => {
-  res.json({ status: 'ok', service: 'Sridevi Residency API', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'Sridevi Residency Management System API',
+    timezone: 'Asia/Kolkata',
+    timestamp: new Date().toISOString(),
+  });
 });
 
-
-// API Routes
+// REST API Endpoints
+app.use('/api/auth', authRoutes);
 app.use('/api/floors', floorRoutes);
 app.use('/api/rooms', roomRoutes);
-app.use('/api/categories', (req, res, next) => {
-  req.url = '/categories' + (req.url === '/' ? '' : req.url);
-  roomRoutes(req, res, next);
-});
+app.use('/api/room-categories', categoryRoutes);
+app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/revenue', revenueRoutes);
+app.use('/api/statistics', statsRoutes);
+app.use('/api/stats', statsRoutes);
 
-const fs = require('fs');
-
-// Resolve path to client build directory
+// Static files serving from client build
 const clientBuildPath = fs.existsSync(path.resolve(__dirname, '../../client/dist'))
   ? path.resolve(__dirname, '../../client/dist')
   : path.resolve(process.cwd(), 'client/dist');
 
-console.log(`📁 Static files serving from: ${clientBuildPath} (exists: ${fs.existsSync(clientBuildPath)})`);
-
-// Serve all static assets from Vite build
 app.use(express.static(clientBuildPath, {
   maxAge: '1h',
   etag: true,
 }));
 
-// Fallback all non-API GET requests to frontend SPA index.html
+// Fallback all non-API GET requests to SPA index.html
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'API route not found' });
+    return res.status(404).json({ error: 'API endpoint not found' });
   }
   const indexPath = path.join(clientBuildPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
-  res.status(404).send('Frontend build not found. Please ensure npm run build was executed.');
+  res.status(404).send('Frontend build not found. Please run npm run build.');
 });
 
 const { errorHandler } = require('./middleware/error.middleware');
-
-// Global error handler
 app.use(errorHandler);
 
 module.exports = app;
