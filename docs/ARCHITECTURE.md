@@ -114,3 +114,25 @@ If Redis is unreachable or fails, all services **gracefully degrade** to directl
 3. **Optimistic Updates & Realtime Sync**:
    - `ResidencyContext` subscribes to Supabase PostgreSQL change events (`UPDATE` / `INSERT` on `rooms` and `floors`) to update the live UI instantly when room statuses change.
    - Broadcast channel syncs state across multi-tab sessions in real time.
+
+---
+
+## 7. Universal Multi-Device Realtime Synchronization
+
+To guarantee that room and floor structure updates made by an Admin or Owner immediately reflect across all devices (desktops, phones, tablets, different browsers):
+
+1. **Server-First Persistence**:
+   - Floor and room modifications (`POST /api/floors`, `POST /api/rooms`, `DELETE /api/floors/:id`, `DELETE /api/rooms/:id`) are saved directly to Supabase PostgreSQL.
+   - The frontend immediately awaits the server's canonical response before finalizing state, preventing local-only ghost data.
+
+2. **Distributed Cache Invalidation**:
+   - Creating, updating, or deleting a room automatically invalidates `residency:{id}:floors*` in Redis.
+   - Any client querying `GET /api/floors` immediately receives the latest room list from the database.
+
+3. **Supabase Realtime Broadcast**:
+   - A global broadcast channel (`residency-universal-sync`) broadcasts `RESIDENCY_STRUCTURE_UPDATED` across the global Supabase Realtime WebSocket cluster.
+   - All active devices connected worldwide receive the event in real-time and reload their floor and room structure instantly.
+
+4. **Multi-Device Polling & Focus Recovery**:
+   - Background polling (10-second interval when visible) and window focus handlers (`focus`) automatically synchronize state if a device was asleep or disconnected.
+

@@ -7,8 +7,8 @@ const { getFloors, createFloor, updateFloor, deleteFloor } = require('../control
 router.use(authenticate);
 
 router.get('/', getFloors);
-router.post('/', requireRole('admin'), createFloor);
-router.put('/:id', requireRole('admin'), updateFloor);
-router.delete('/:id', requireRole('admin'), deleteFloor);
+router.post('/', requireRole('admin', 'owner'), createFloor);
+router.put('/:id', requireRole('admin', 'owner'), updateFloor);
+router.delete('/:id', requireRole('admin', 'owner'), deleteFloor);
 
 module.exports = router;

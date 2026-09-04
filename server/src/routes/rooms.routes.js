@@ -11,15 +11,15 @@ router.use(authenticate);
 
 // Room categories
 router.get('/categories', getCategories);
-router.post('/categories', requireRole('admin'), createCategory);
-router.put('/categories/:id', requireRole('admin'), updateCategory);
-router.delete('/categories/:id', requireRole('admin'), deleteCategory);
+router.post('/categories', requireRole('admin', 'owner'), createCategory);
+router.put('/categories/:id', requireRole('admin', 'owner'), updateCategory);
+router.delete('/categories/:id', requireRole('admin', 'owner'), deleteCategory);
 
 // Rooms
 router.get('/', getRooms);
 router.get('/:id', getRoom);
-router.post('/', requireRole('admin'), createRoom);
-router.put('/:id', requireRole('admin'), updateRoom);
-router.delete('/:id', requireRole('admin'), deleteRoom);
+router.post('/', requireRole('admin', 'owner'), createRoom);
+router.put('/:id', requireRole('admin', 'owner'), updateRoom);
+router.delete('/:id', requireRole('admin', 'owner'), deleteRoom);
 
 module.exports = router;

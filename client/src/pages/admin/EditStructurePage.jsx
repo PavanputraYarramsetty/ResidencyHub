@@ -30,18 +30,26 @@ export default function EditStructurePage() {
   async function handleCreateFloor(e) {
     e.preventDefault();
     if (!newFloorName) return toast.error('Please enter a floor name');
-    await addFloor(newFloorName, newFloorNumber !== '' ? newFloorNumber : floors.length);
-    toast.success(`Floor "${newFloorName}" created successfully!`);
-    setNewFloorName('');
-    setNewFloorNumber('');
-    setShowAddFloorModal(false);
+    try {
+      await addFloor(newFloorName, newFloorNumber !== '' ? newFloorNumber : floors.length);
+      toast.success(`Floor "${newFloorName}" created successfully!`);
+      setNewFloorName('');
+      setNewFloorNumber('');
+      setShowAddFloorModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Failed to create floor');
+    }
   }
 
   // Handle Delete Floor
   async function handleDeleteFloor(floor) {
     if (window.confirm(`Are you sure you want to delete ${floor.floor_name} and all rooms in it?`)) {
-      await deleteFloor(floor.id);
-      toast.success(`${floor.floor_name} removed.`);
+      try {
+        await deleteFloor(floor.id);
+        toast.success(`${floor.floor_name} removed.`);
+      } catch (err) {
+        toast.error(err.response?.data?.error || err.message || 'Failed to delete floor');
+      }
     }
   }
 
@@ -61,26 +69,34 @@ export default function EditStructurePage() {
     if (!customCategoryName) return toast.error('Please enter a category name');
     if (!targetFloorId) return toast.error('Target floor required');
 
-    const categoryObj = {
-      name: customCategoryName.trim(),
-      base_price: customPrice ? parseFloat(customPrice) : 1500,
-    };
+    try {
+      const categoryObj = {
+        name: customCategoryName.trim(),
+        base_price: customPrice ? parseFloat(customPrice) : 1500,
+      };
 
-    await addRoom(targetFloorId, {
-      room_number: newRoomNumber,
-      category: categoryObj,
-    });
+      await addRoom(targetFloorId, {
+        room_number: newRoomNumber,
+        category: categoryObj,
+      });
 
-    const targetFloor = floors.find((f) => f.id === targetFloorId);
-    toast.success(`Room ${newRoomNumber} (${customCategoryName}) added to ${targetFloor?.floor_name || 'Floor'}! 🏨`);
-    setShowAddRoomModal(false);
+      const targetFloor = floors.find((f) => f.id === targetFloorId);
+      toast.success(`Room ${newRoomNumber} (${customCategoryName}) added to ${targetFloor?.floor_name || 'Floor'}! 🏨`);
+      setShowAddRoomModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Failed to create room');
+    }
   }
 
   // Handle Delete Room
   async function handleDeleteRoom(floorId, room) {
     if (window.confirm(`Are you sure you want to remove Room ${room.room_number}?`)) {
-      await deleteRoom(floorId, room.id);
-      toast.success(`Room ${room.room_number} deleted.`);
+      try {
+        await deleteRoom(floorId, room.id);
+        toast.success(`Room ${room.room_number} deleted.`);
+      } catch (err) {
+        toast.error(err.response?.data?.error || err.message || 'Failed to delete room');
+      }
     }
   }
 

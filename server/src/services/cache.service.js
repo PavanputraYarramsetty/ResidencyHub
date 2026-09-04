@@ -96,13 +96,19 @@ async function deletePattern(pattern) {
 
   try {
     const keysToDelete = [];
-    for await (const key of redisClient.scanIterator({ MATCH: pattern, COUNT: 100 })) {
-      keysToDelete.push(key);
+    for await (const keys of redisClient.scanIterator({ MATCH: pattern, COUNT: 100 })) {
+      if (Array.isArray(keys)) {
+        keysToDelete.push(...keys);
+      } else if (keys) {
+        keysToDelete.push(keys);
+      }
     }
 
-    if (keysToDelete.length > 0) {
-      const deletedCount = await redisClient.del(...keysToDelete);
-      logger.info(`Redis cache invalidated: ${pattern}`);
+    const flatKeys = keysToDelete.flat().filter(Boolean);
+
+    if (flatKeys.length > 0) {
+      const deletedCount = await redisClient.del(flatKeys);
+      logger.info(`Redis cache invalidated: ${pattern} (${deletedCount} keys)`);
       return deletedCount;
     }
 
@@ -120,6 +126,7 @@ async function deletePattern(pattern) {
 async function invalidateRoomsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
+    deletePattern(`residency:${residency_id}:floors*`),
     deletePattern(`residency:${residency_id}:room*`),
     deletePattern(`residency:${residency_id}:dashboard*`),
   ]);
@@ -137,6 +144,7 @@ async function invalidateFloorsCache(residency_id) {
 async function invalidateCategoriesCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
+    deletePattern(`residency:${residency_id}:floors*`),
     deletePattern(`residency:${residency_id}:room_categories*`),
     deletePattern(`residency:${residency_id}:room*`),
   ]);
@@ -145,6 +153,7 @@ async function invalidateCategoriesCache(residency_id) {
 async function invalidateBookingsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
+    deletePattern(`residency:${residency_id}:floors*`),
     deletePattern(`residency:${residency_id}:room*`),
     deletePattern(`residency:${residency_id}:dashboard*`),
     deletePattern(`residency:${residency_id}:revenue*`),

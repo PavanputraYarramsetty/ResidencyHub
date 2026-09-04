@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../services/api';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 const ResidencyContext = createContext(null);
 
@@ -14,26 +15,14 @@ const MOCK_CATEGORIES = [
 
 const INITIAL_MOCK_FLOORS = [];
 
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-
+// Same-browser cross-tab broadcast channel
 const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('residency_sync_channel') : null;
-
-function notifyStructureChange() {
-  localStorage.setItem('residency_last_sync', Date.now().toString());
-  window.dispatchEvent(new Event('residency_updated'));
-  if (syncChannel) {
-    try {
-      syncChannel.postMessage({ type: 'RESIDENCY_STRUCTURE_UPDATED', timestamp: Date.now() });
-    } catch (e) {
-      /* ignore */
-    }
-  }
-}
 
 export function ResidencyProvider({ children }) {
   const { isAuthenticated } = useAuth();
-  
-  // Load saved floors from localStorage if available
+  const universalChannelRef = useRef(null);
+
+  // Load saved floors from localStorage as initial offline fallback
   const [floors, setFloors] = useState(() => {
     const saved = localStorage.getItem('residency_floors');
     if (saved) {
@@ -45,20 +34,74 @@ export function ResidencyProvider({ children }) {
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [loading, setLoading] = useState(false);
 
+  // Fetch canonical floors and room inventory from backend API
+  const fetchFloors = useCallback(async () => {
+    try {
+      const { data } = await api.get('/floors');
+      if (Array.isArray(data)) {
+        setFloors(data);
+        localStorage.setItem('residency_floors', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.warn('Fetch floors notice — keeping local cache:', err.message);
+    }
+  }, []);
+
+  // Fetch canonical room categories from backend API
+  const fetchCategories = useCallback(async () => {
+    try {
+      const { data } = await api.get('/rooms/categories');
+      if (Array.isArray(data) && data.length > 0) {
+        setCategories(data);
+      }
+    } catch (err) {
+      /* ignore */
+    }
+  }, []);
+
+  // Universal multi-device broadcast dispatch
+  const broadcastUniversalChange = useCallback(() => {
+    // 1. Same-device cross-tab sync
+    localStorage.setItem('residency_last_sync', Date.now().toString());
+    window.dispatchEvent(new Event('residency_updated'));
+    if (syncChannel) {
+      try {
+        syncChannel.postMessage({ type: 'RESIDENCY_STRUCTURE_UPDATED', timestamp: Date.now() });
+      } catch (e) {
+        /* ignore */
+      }
+    }
+
+    // 2. Multi-device worldwide sync via Supabase Realtime WebSocket
+    if (universalChannelRef.current) {
+      try {
+        universalChannelRef.current.send({
+          type: 'broadcast',
+          event: 'RESIDENCY_STRUCTURE_UPDATED',
+          payload: { timestamp: Date.now() },
+        });
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  // Always fetch fresh data on initial mount and when authenticated
   useEffect(() => {
-    localStorage.setItem('residency_floors', JSON.stringify(floors));
-  }, [floors]);
+    fetchFloors();
+    fetchCategories();
+  }, [fetchFloors, fetchCategories]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchFloors();
       fetchCategories();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchFloors, fetchCategories]);
 
-  // Realtime & Cross-Tab Listeners
+  // Realtime & Cross-Device Sync Listeners
   useEffect(() => {
-    // 1. Cross-Tab Broadcast Channel (Owner <-> Admin tabs)
+    // 1. Local Cross-Tab Broadcast Channel (Same browser instance)
     if (syncChannel) {
       const handleBroadcast = (event) => {
         if (event.data?.type === 'RESIDENCY_STRUCTURE_UPDATED') {
@@ -69,14 +112,20 @@ export function ResidencyProvider({ children }) {
       syncChannel.addEventListener('message', handleBroadcast);
       return () => syncChannel.removeEventListener('message', handleBroadcast);
     }
-  }, []);
+  }, [fetchFloors, fetchCategories]);
 
-  // 2. Supabase Realtime multi-device sync
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    const channel = supabase
-      .channel('residency-realtime-all')
+    // 2. Global Universal Sync Channel (Multi-Device Worldwide WebSockets)
+    const universalChannel = supabase.channel('residency-universal-sync');
+
+    universalChannel
+      .on('broadcast', { event: 'RESIDENCY_STRUCTURE_UPDATED' }, () => {
+        console.log('🔄 Universal Realtime Sync: received structure update broadcast from another device');
+        fetchFloors();
+        fetchCategories();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'floors' }, () => {
         fetchFloors();
       })
@@ -90,31 +139,42 @@ export function ResidencyProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
         fetchFloors();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          universalChannelRef.current = universalChannel;
+        }
+      });
 
     return () => {
-      supabase.removeChannel(channel);
+      universalChannelRef.current = null;
+      supabase.removeChannel(universalChannel);
     };
-  }, []);
+  }, [fetchFloors, fetchCategories]);
 
-  // 3. Window focus refresh
+  // 3. Multi-Device Polling & Window Focus Sync (Guarantees fresh sync across all screens)
   useEffect(() => {
     const handleFocus = () => {
       fetchFloors();
     };
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+
+    // Periodic 10-second sync while tab is open
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchFloors();
+      }
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, [fetchFloors]);
 
   // 4. Local storage & custom events
   useEffect(() => {
     function handleSync() {
-      const saved = localStorage.getItem('residency_floors');
-      if (saved) {
-        try {
-          setFloors(JSON.parse(saved));
-        } catch (e) { /* ignore */ }
-      }
+      fetchFloors();
     }
 
     window.addEventListener('storage', handleSync);
@@ -124,66 +184,96 @@ export function ResidencyProvider({ children }) {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('residency_updated', handleSync);
     };
-  }, []);
+  }, [fetchFloors]);
 
-  async function fetchFloors() {
+  // Structural Management — Add Floor (Universal Server-First Persistence)
+  async function addFloor(floorName, floorNumber) {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { data } = await api.get('/floors');
-      if (Array.isArray(data)) {
-        // Merge with local overrides if room was marked occupied/available locally
-        const saved = localStorage.getItem('residency_floors');
-        let statusMap = new Map();
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            parsed.forEach((pf) => {
-              (pf.rooms || []).forEach((pr) => {
-                statusMap.set(pr.id, { status: pr.status, active_booking: pr.active_booking });
-                statusMap.set(String(pr.room_number), { status: pr.status, active_booking: pr.active_booking });
-              });
-            });
-          } catch (e) {
-            /* ignore */
-          }
-        }
+      const { data } = await api.post('/floors', {
+        floor_name: floorName,
+        floor_number: floorNumber !== undefined && floorNumber !== '' ? Number(floorNumber) : undefined,
+      });
 
-        const mergedFloors = data.map((f) => ({
-          ...f,
-          rooms: (f.rooms || []).map((r) => {
-            const override = statusMap.get(r.id) || statusMap.get(String(r.room_number));
-            if (override && (r.status === 'available' || !r.active_booking)) {
-              return {
-                ...r,
-                status: override.status || r.status,
-                active_booking: override.active_booking !== undefined ? override.active_booking : r.active_booking,
-              };
-            }
-            return r;
-          }),
-        }));
-        setFloors(mergedFloors);
-        localStorage.setItem('residency_floors', JSON.stringify(mergedFloors));
-      }
+      // Synchronize canonical database state immediately
+      await fetchFloors();
+
+      // Notify all other connected devices universally
+      broadcastUniversalChange();
+
+      return data;
     } catch (err) {
-      console.warn('Fetch floors notice — keeping local cache:', err.message);
+      console.error('Failed to create floor on server:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
   }
 
-  async function fetchCategories() {
+  // Structural Management — Delete Floor (Universal Server-First Persistence)
+  async function deleteFloor(floorId) {
+    setLoading(true);
     try {
-      const { data } = await api.get('/rooms/categories');
-      if (Array.isArray(data) && data.length > 0) {
-        setCategories(data);
-      }
+      const { data } = await api.delete(`/floors/${floorId}`);
+      await fetchFloors();
+      broadcastUniversalChange();
+      return data;
     } catch (err) {
-      /* ignore */
+      console.error('Failed to delete floor on server:', err);
+      throw err;
+    } finally {
+      setLoading(false);
     }
   }
 
-  // Mark room occupied
+  // Structural Management — Add Room to Floor (Universal Server-First Persistence)
+  async function addRoom(floorId, roomData) {
+    setLoading(true);
+    try {
+      const categoryName = roomData.category?.name || roomData.category_name || 'Standard';
+      const basePrice = Number(roomData.category?.base_price || roomData.base_price) || 1500;
+      const categoryId = roomData.category?.id || roomData.category_id;
+
+      const { data } = await api.post('/rooms', {
+        floor_id: floorId,
+        room_number: String(roomData.room_number),
+        category_name: categoryName,
+        base_price: basePrice,
+        category_id: categoryId,
+      });
+
+      // Synchronize canonical database state immediately
+      await fetchFloors();
+
+      // Notify all other connected devices universally
+      broadcastUniversalChange();
+
+      return data;
+    } catch (err) {
+      console.error('Failed to create room on server:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Structural Management — Delete Room (Universal Server-First Persistence)
+  async function deleteRoom(floorId, roomId) {
+    setLoading(true);
+    try {
+      const { data } = await api.delete(`/rooms/${roomId}`);
+      await fetchFloors();
+      broadcastUniversalChange();
+      return data;
+    } catch (err) {
+      console.error('Failed to delete room on server:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Mark room occupied (Local optimistic + universal broadcast)
   function markRoomOccupied(roomId, bookingData) {
     setFloors((prevFloors) => {
       const updated = prevFloors.map((floor) => ({
@@ -220,12 +310,12 @@ export function ResidencyProvider({ children }) {
         }),
       }));
       localStorage.setItem('residency_floors', JSON.stringify(updated));
-      notifyStructureChange();
+      broadcastUniversalChange();
       return updated;
     });
   }
 
-  // Mark room available on checkout
+  // Mark room available on checkout (Local optimistic + universal broadcast)
   function markRoomAvailable(roomId, checkoutSummary) {
     setFloors((prevFloors) => {
       const updated = prevFloors.map((floor) => ({
@@ -242,7 +332,7 @@ export function ResidencyProvider({ children }) {
         }),
       }));
       localStorage.setItem('residency_floors', JSON.stringify(updated));
-      notifyStructureChange();
+      broadcastUniversalChange();
       return updated;
     });
 
@@ -261,167 +351,13 @@ export function ResidencyProvider({ children }) {
     localStorage.setItem('residency_audit_ledger', JSON.stringify([newLog, ...savedLedger]));
   }
 
-  // Structural Management — Add Floor
-  async function addFloor(floorName, floorNumber) {
-    const tempFloorId = `floor-${Date.now()}`;
-    const newFloor = {
-      id: tempFloorId,
-      floor_number: Number(floorNumber) || floors.length,
-      floor_name: floorName || `Floor ${floors.length + 1}`,
-      stats: { totalRooms: 0, occupiedRooms: 0, availableRooms: 0, reservedRooms: 0 },
-      rooms: [],
-    };
-
-    const updated = [...floors, newFloor];
-    setFloors(updated);
-    localStorage.setItem('residency_floors', JSON.stringify(updated));
-    notifyStructureChange();
-
-    try {
-      const { data } = await api.post('/floors', {
-        floor_name: floorName,
-        floor_number: Number(floorNumber) || 0,
-      });
-
-      if (data && data.id) {
-        setFloors((prevFloors) => {
-          const synced = prevFloors.map((f) => {
-            if (f.id === tempFloorId || f.floor_number === data.floor_number) {
-              return { ...f, ...data, rooms: f.rooms || data.rooms || [] };
-            }
-            return f;
-          });
-          localStorage.setItem('residency_floors', JSON.stringify(synced));
-          return synced;
-        });
-        notifyStructureChange();
-      }
-      return data;
-    } catch (e) {
-      console.warn('Backend addFloor notice — local floor kept:', e.message);
-      return newFloor;
-    }
-  }
-
-  // Structural Management — Delete Floor
-  async function deleteFloor(floorId) {
-    const updated = floors.filter((f) => f.id !== floorId);
-    setFloors(updated);
-    localStorage.setItem('residency_floors', JSON.stringify(updated));
-    notifyStructureChange();
-
-    try {
-      if (floorId && !floorId.startsWith('floor-')) {
-        await api.delete(`/floors/${floorId}`);
-      }
-      notifyStructureChange();
-    } catch (e) {
-      console.warn('Backend deleteFloor notice:', e.message);
-    }
-  }
-
-  // Structural Management — Add Room to Floor
-  async function addRoom(floorId, roomData) {
-    const categoryObj = roomData.category || {
-      id: roomData.category_id || 'cat-1',
-      name: roomData.category_name || 'AC Single',
-      base_price: Number(roomData.base_price) || 1500,
-    };
-
-    const tempRoomId = `r-${Date.now()}`;
-    const newRoom = {
-      id: tempRoomId,
-      floor_id: floorId,
-      room_number: String(roomData.room_number),
-      status: 'available',
-      category_id: categoryObj.id,
-      room_categories: categoryObj,
-    };
-
-    const updated = floors.map((f) => {
-      if (f.id === floorId) {
-        return {
-          ...f,
-          rooms: [...(f.rooms || []), newRoom],
-        };
-      }
-      return f;
-    });
-
-    setFloors(updated);
-    localStorage.setItem('residency_floors', JSON.stringify(updated));
-    notifyStructureChange();
-
-    try {
-      const { data } = await api.post('/rooms', {
-        floor_id: floorId,
-        room_number: roomData.room_number,
-        category_id: categoryObj.id,
-        category_name: categoryObj.name,
-        base_price: categoryObj.base_price,
-      });
-
-      if (data && data.id) {
-        setFloors((prevFloors) => {
-          const synced = prevFloors.map((f) => {
-            if (f.id === floorId || f.id === data.floor_id) {
-              const updatedRooms = (f.rooms || []).map((r) => {
-                if (r.id === tempRoomId || String(r.room_number) === String(data.room_number)) {
-                  return { ...r, ...data };
-                }
-                return r;
-              });
-              return { ...f, rooms: updatedRooms };
-            }
-            return f;
-          });
-          localStorage.setItem('residency_floors', JSON.stringify(synced));
-          return synced;
-        });
-        notifyStructureChange();
-      }
-      return data;
-    } catch (e) {
-      console.warn('Backend addRoom notice — local room kept:', e.message);
-      return newRoom;
-    }
-  }
-
-  // Structural Management — Delete Room
-  async function deleteRoom(floorId, roomId) {
-    const updated = floors.map((f) => {
-      if (f.id === floorId) {
-        return {
-          ...f,
-          rooms: (f.rooms || []).filter((r) => r.id !== roomId),
-        };
-      }
-      return f;
-    });
-
-    setFloors(updated);
-    localStorage.setItem('residency_floors', JSON.stringify(updated));
-    notifyStructureChange();
-
-    try {
-      if (roomId && !roomId.startsWith('r-')) {
-        await api.delete(`/rooms/${roomId}`);
-      }
-      notifyStructureChange();
-    } catch (e) {
-      console.warn('Backend deleteRoom notice:', e.message);
-    }
-  }
-
   // Complete Data Reset — Wipe all bookings, ledgers & restore available rooms
   async function resetAllResidencyData() {
     localStorage.removeItem('residency_floors');
     localStorage.removeItem('residency_audit_ledger');
     setFloors(INITIAL_MOCK_FLOORS);
-    localStorage.setItem('residency_floors', JSON.stringify(INITIAL_MOCK_FLOORS));
-    notifyStructureChange();
+    broadcastUniversalChange();
     try {
-      // Fetch latest clean structure from server
       await fetchFloors();
     } catch (e) {
       /* ignore */
