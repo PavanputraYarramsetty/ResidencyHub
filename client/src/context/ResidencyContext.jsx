@@ -416,6 +416,9 @@ export function ResidencyProvider({ children }) {
       payment_mode: checkoutSummary.payment_mode || 'UPI',
     };
     localStorage.setItem('residency_audit_ledger', JSON.stringify([newLog, ...savedLedger]));
+
+    // In background, refresh from server to ensure database sync
+    fetchFloors().catch(() => {});
   }
 
   // Complete Data Reset — Wipe all bookings, ledgers & restore available rooms
