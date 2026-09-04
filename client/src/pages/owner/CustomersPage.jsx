@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import api from '../../services/api';
-import { formatDateTime } from '../../utils/dateFormat';
+import { useState, useEffect, useCallback } from 'react';
+import { customerService } from '../../services/customerService';
 import toast from 'react-hot-toast';
 
 const MOCK_GUESTS = [];
@@ -22,6 +21,93 @@ export default function CustomersPage() {
     aadhar_number: '',
     address: '',
   });
+
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await customerService.getCustomers();
+      let apiList = Array.isArray(data) ? data : (data?.customers || []);
+      if (!apiList || apiList.length === 0) {
+        apiList = MOCK_GUESTS;
+      }
+
+      // Collect local walk-in guests from localStorage floors & audit ledger
+      const localFloors = JSON.parse(localStorage.getItem('residency_floors') || '[]');
+      const auditLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
+      
+      const localGuestsMap = new Map();
+
+      // Extract guests from active room bookings
+      localFloors.forEach((f) => {
+        (f.rooms || []).forEach((r) => {
+          if (r.active_booking?.customers) {
+            const c = r.active_booking.customers;
+            if (c.phone) {
+              localGuestsMap.set(c.phone, {
+                id: c.id || `guest-${c.phone}`,
+                full_name: c.full_name,
+                phone: c.phone,
+                age: c.age,
+                gender: c.gender || 'Male',
+                aadhar_number: c.aadhar_number || '—',
+                address: c.address || '—',
+                created_at: r.active_booking.check_in || new Date().toISOString(),
+                total_visits: 1,
+                last_room: r.room_number,
+                status: 'In-House (Occupied)',
+              });
+            }
+          }
+        });
+      });
+
+      // Extract guests from audit ledger checkouts
+      auditLedger.forEach((log) => {
+        if (log.phone) {
+          const existing = localGuestsMap.get(log.phone);
+          if (existing) {
+            existing.total_visits = (existing.total_visits || 1) + 1;
+            existing.status = 'Checked Out';
+          } else {
+            localGuestsMap.set(log.phone, {
+              id: `guest-${log.phone}`,
+              full_name: log.full_name || 'Walk-in Guest',
+              phone: log.phone,
+              age: log.age || '—',
+              gender: log.gender || 'Male',
+              aadhar_number: log.aadhar_number || '—',
+              address: log.address || '—',
+              created_at: log.check_in || new Date().toISOString(),
+              total_visits: 1,
+              last_room: log.room_number,
+              status: 'Checked Out',
+            });
+          }
+        }
+      });
+
+      // Merge server and local guests
+      const mergedMap = new Map();
+      apiList.forEach((g) => {
+        if (g.phone) mergedMap.set(g.phone, g);
+      });
+      localGuestsMap.forEach((g, phoneKey) => {
+        if (!mergedMap.has(phoneKey)) {
+          mergedMap.set(phoneKey, g);
+        }
+      });
+
+      setCustomers(Array.from(mergedMap.values()));
+    } catch (err) {
+      console.warn('Customers fetch warning:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   function openEditModal(guest) {
     setEditingGuest(guest);
@@ -54,7 +140,7 @@ export default function CustomersPage() {
 
     // Update remote API if ID is UUID
     if (editingGuest.id && !editingGuest.id.startsWith('guest-')) {
-      await api.put(`/customers/${editingGuest.id}`, editForm).catch(() => {});
+      await customerService.updateCustomer(editingGuest.id, editForm).catch(() => {});
     }
 
     // Update local state list
@@ -73,7 +159,7 @@ export default function CustomersPage() {
   async function handleDeleteGuest(guest) {
     if (window.confirm(`Are you sure you want to delete ${guest.full_name} from the guest directory?`)) {
       if (guest.id && !guest.id.startsWith('guest-')) {
-        await api.delete(`/customers/${guest.id}`).catch(() => {});
+        await customerService.deleteCustomer(guest.id).catch(() => {});
       }
 
       setCustomers((prev) => prev.filter((g) => g.id !== guest.id));
@@ -81,82 +167,6 @@ export default function CustomersPage() {
         setSelectedGuest(null);
       }
       toast.success(`${guest.full_name} removed from guest directory.`);
-    }
-  }
-
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  async function fetchCustomers() {
-    try {
-      setLoading(true);
-      const { data } = await api.get('/customers');
-      let apiList = Array.isArray(data) ? data : (data?.customers || []);
-      if (!apiList || apiList.length === 0) {
-        apiList = MOCK_GUESTS;
-      }
-
-      // Collect local walk-in guests from localStorage floors & audit ledger
-      const localFloors = JSON.parse(localStorage.getItem('residency_floors') || '[]');
-      const auditLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
-      
-      const localGuestsMap = new Map();
-
-      // Extract guests from active room bookings
-      localFloors.forEach((f) => {
-        (f.rooms || []).forEach((r) => {
-          if (r.active_booking?.customers) {
-            const c = r.active_booking.customers;
-            if (c.phone) {
-              localGuestsMap.set(c.phone, {
-                id: `guest-${c.phone}`,
-                full_name: c.full_name || 'Guest',
-                phone: c.phone,
-                aadhar_number: c.aadhar_number || '—',
-                address: c.address || '—',
-                age: c.age || 30,
-                gender: c.gender || 'Male',
-                created_at: r.active_booking.check_in || new Date().toISOString(),
-                status: 'In-House Patron (Occupied)',
-              });
-            }
-          }
-        });
-      });
-
-      // Extract guests from checkout audit ledger
-      auditLedger.forEach((log) => {
-        if (log.customers?.phone) {
-          const c = log.customers;
-          if (!localGuestsMap.has(c.phone)) {
-            localGuestsMap.set(c.phone, {
-              id: `guest-${c.phone}`,
-              full_name: c.full_name || 'Guest',
-              phone: c.phone,
-              aadhar_number: c.aadhar_number || '—',
-              address: c.address || '—',
-              age: c.age || 30,
-              gender: c.gender || 'Male',
-              created_at: log.check_out || new Date().toISOString(),
-              status: 'Checked Out',
-            });
-          }
-        }
-      });
-
-      // Merge API list with local guests (avoiding duplicates by phone)
-      const existingPhones = new Set(apiList.map((g) => g.phone));
-      const newLocalGuests = Array.from(localGuestsMap.values()).filter((g) => !existingPhones.has(g.phone));
-
-      const combinedList = [...newLocalGuests, ...apiList];
-      setCustomers(combinedList);
-      setSelectedGuest(combinedList[0] || null);
-    } catch (err) {
-      setCustomers(MOCK_GUESTS);
-      setSelectedGuest(MOCK_GUESTS[0]);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -183,14 +193,8 @@ export default function CustomersPage() {
       `"${c.aadhar_number || ''}"`,
       `"${c.address || ''}"`,
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Sridevi_Residency_Guest_Directory_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const filename = `Sridevi_Residency_Guest_Directory_${new Date().toISOString().slice(0, 10)}.csv`;
+    exportToCSV(headers, rows, filename);
     toast.success('Guest directory CSV exported! 📄');
   }
 

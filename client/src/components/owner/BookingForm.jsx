@@ -1,154 +1,53 @@
-import { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
-import { useCustomerSearch } from '../../hooks/useCustomerSearch';
-import { bookingService } from '../../services/bookingService';
-import { useResidency } from '../../context/ResidencyContext';
+import { useBookingForm } from '../../hooks/useBookingForm';
 import { formatCurrency, formatDateTime } from '../../utils/dateFormat';
-import toast from 'react-hot-toast';
 
 export default function BookingForm({ isOpen, onClose, preselectedRoomId, preselectedRoom, onSuccess }) {
-  const { floors, markRoomOccupied } = useResidency();
-
-  // Record exact check-in timestamp when modal is opened
-  const [checkInTime, setCheckInTime] = useState(() => new Date().toISOString());
-
-  // Combine rooms from context floors
-  const contextRooms = floors.flatMap((f) =>
-    (f.rooms || []).map((r) => ({
-      ...r,
-      floor_name: f.floor_name,
-    }))
-  );
-
-  const initialRoomId = preselectedRoomId || preselectedRoom?.id || (contextRooms.length > 0 ? contextRooms[0].id : '');
-
-  // Form State
-  const [roomId, setRoomId] = useState(initialRoomId);
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [aadharNumber, setAadharNumber] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('Male');
-  const [address, setAddress] = useState('');
-  const [noOfPersons, setNoOfPersons] = useState(1);
-  const [noOfDays, setNoOfDays] = useState(1);
-  const [advanceAmount, setAdvanceAmount] = useState('');
-  const [paymentMode, setPaymentMode] = useState('UPI');
-
-  // Customer search autosuggest states
-  const [nameQuery, setNameQuery] = useState('');
-  const [phoneQuery, setPhoneQuery] = useState('');
-  const [isNameFocused, setIsNameFocused] = useState(false);
-  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
-
-  const { results: fullNameSuggestions, loading: nameLoading } = useCustomerSearch(nameQuery);
-  const { results: phoneSuggestions } = useCustomerSearch(phoneQuery);
-
-  // Photo upload states
-  const [aadharPhoto, setAadharPhoto] = useState(null);
-  const [aadharPhotoPreview, setAadharPhotoPreview] = useState(null);
-  const [passportPhoto, setPassportPhoto] = useState(null);
-  const [passportPhotoPreview, setPassportPhotoPreview] = useState(null);
-
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setCheckInTime(new Date().toISOString());
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const targetId = preselectedRoomId || preselectedRoom?.id;
-    if (targetId) {
-      setRoomId(targetId);
-    } else if (contextRooms.length > 0 && !roomId) {
-      setRoomId(contextRooms[0].id);
-    }
-  }, [preselectedRoomId, preselectedRoom, isOpen]);
-
-  // Find currently selected room object
-  const selectedRoomObj = contextRooms.find((r) => r.id === roomId) || preselectedRoom || contextRooms[0];
-  const ratePerDay = selectedRoomObj?.room_categories?.base_price || 0;
-  const calculatedTotal = ratePerDay * noOfDays;
-
-  function handleAadharPhotoChange(e) {
-    const file = e.target.files[0];
-    if (file) {
-      setAadharPhoto(file);
-      setAadharPhotoPreview(URL.createObjectURL(file));
-      toast.success('Aadhaar photo attached');
-    }
-  }
-
-  function handlePassportPhotoChange(e) {
-    const file = e.target.files[0];
-    if (file) {
-      setPassportPhoto(file);
-      setPassportPhotoPreview(URL.createObjectURL(file));
-      toast.success('Passport photo attached');
-    }
-  }
-
-  function handleSelectCustomer(c) {
-    if (c.full_name) setFullName(c.full_name);
-    if (c.phone) setPhone(c.phone);
-    if (c.aadhar_number) setAadharNumber(c.aadhar_number);
-    if (c.age) setAge(c.age.toString());
-    if (c.gender) setGender(c.gender);
-    if (c.address) setAddress(c.address);
-    toast.success(`Auto-filled details for ${c.full_name}! ✨`);
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    const activeTargetId = roomId || selectedRoomObj?.id;
-    if (!activeTargetId) return toast.error('Please select a target room');
-    if (!fullName || !phone) return toast.error('Please fill in guest name and phone number');
-
-    try {
-      setSubmitting(true);
-      await bookingService.createBooking({
-        room_id: activeTargetId,
-        full_name: fullName,
-        phone: phone,
-        aadhar_number: aadharNumber,
-        age: age ? parseInt(age, 10) : null,
-        gender: gender,
-        address: address,
-        no_of_persons: parseInt(noOfPersons, 10) || 1,
-        no_of_days: parseInt(noOfDays, 10) || 1,
-        check_in: checkInTime,
-        advance_amount: advanceAmount ? parseFloat(advanceAmount) : 0,
-      }).catch(() => {});
-
-      // Mark room occupied on floor map grid immediately
-      markRoomOccupied(activeTargetId, {
-        full_name: fullName,
-        phone: phone,
-        age: age ? parseInt(age, 10) : null,
-        gender: gender,
-        aadhar_number: aadharNumber,
-        address: address,
-        no_of_persons: parseInt(noOfPersons, 10) || 1,
-        no_of_days: parseInt(noOfDays, 10) || 1,
-        check_in: checkInTime,
-        advance_amount: advanceAmount ? parseFloat(advanceAmount) : 0,
-        rate_per_day: ratePerDay,
-        total_amount: calculatedTotal,
-      });
-
-      toast.success(
-        `Room ${selectedRoomObj?.room_number || ''} booked for ${noOfDays} day(s)! Checked in at ${formatDateTime(checkInTime)} 🔴`
-      );
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      toast.error('Booking saved');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const {
+    contextRooms,
+    roomId,
+    setRoomId,
+    fullName,
+    setFullName,
+    phone,
+    setPhone,
+    aadharNumber,
+    setAadharNumber,
+    age,
+    setAge,
+    gender,
+    setGender,
+    address,
+    setAddress,
+    noOfPersons,
+    setNoOfPersons,
+    noOfDays,
+    setNoOfDays,
+    advanceAmount,
+    setAdvanceAmount,
+    paymentMode,
+    setPaymentMode,
+    setNameQuery,
+    setPhoneQuery,
+    isNameFocused,
+    setIsNameFocused,
+    isPhoneFocused,
+    setIsPhoneFocused,
+    fullNameSuggestions,
+    phoneSuggestions,
+    nameLoading,
+    aadharPhotoPreview,
+    passportPhotoPreview,
+    handleAadharPhotoChange,
+    handlePassportPhotoChange,
+    handleSelectCustomer,
+    submitting,
+    handleSubmit,
+    selectedRoomObj,
+    ratePerDay,
+    calculatedTotal,
+    checkInTime,
+  } = useBookingForm({ isOpen, onClose, preselectedRoomId, preselectedRoom, onSuccess });
 
   return (
     <Modal

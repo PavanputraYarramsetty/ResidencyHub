@@ -67,10 +67,9 @@ app.get('*', (req, res) => {
   res.status(404).send('Frontend build not found. Please ensure npm run build was executed.');
 });
 
+const { errorHandler } = require('./middleware/error.middleware');
+
 // Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error', message: err.message });
-});
+app.use(errorHandler);
 
 module.exports = app;

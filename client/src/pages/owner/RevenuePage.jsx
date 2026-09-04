@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { revenueService } from '../../services/revenueService';
+import { exportToCSV } from '../../utils/csvExport';
 import { formatCurrency, formatDateTime } from '../../utils/dateFormat';
 import toast from 'react-hot-toast';
 
@@ -9,27 +10,28 @@ export default function RevenuePage() {
   const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('30days');
+  const [filterMode, setFilterMode] = useState('ALL');
   const [invoiceItem, setInvoiceItem] = useState(null);
 
-  useEffect(() => {
-    fetchRevenue();
-  }, []);
-
-  async function fetchRevenue() {
+  const fetchRevenue = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/revenue');
-      const serverBookings = data?.bookings || (Array.isArray(data) ? data : []);
+      const data = await revenueService.getRevenue();
+      const rawArray = Array.isArray(data) ? data : (data?.data || []);
       const localLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
-      const combined = [...localLedger, ...serverBookings];
+      const combined = [...localLedger, ...rawArray];
       setRevenueData(combined.length > 0 ? combined : MOCK_REVENUE_ITEMS);
-    } catch (err) {
+    } catch {
       const localLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
       setRevenueData(localLedger.length > 0 ? localLedger : MOCK_REVENUE_ITEMS);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchRevenue();
+  }, [fetchRevenue]);
 
   // Derived calculations
   const totalGrossRevenue = revenueData.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
@@ -48,14 +50,8 @@ export default function RevenuePage() {
       b.billable_days || 1,
       b.total_amount || 0,
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Sridevi_Residency_Revenue_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const filename = `Sridevi_Residency_Revenue_Ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+    exportToCSV(headers, rows, filename);
     toast.success('Revenue report exported! 📊');
   }
 

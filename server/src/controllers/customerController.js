@@ -1,29 +1,20 @@
-const { supabaseAdmin } = require('../config/supabase');
+const customerService = require('../services/customer.service');
 const { logger } = require('../utils/logger');
-const { getCache, setCache, invalidateCustomerSearchCache, TTL } = require('../services/cache.service');
 
 // GET /api/customers — List all customers with search
-async function getCustomers(req, res) {
+async function getCustomers(req, res, next) {
   try {
     const { residency_id } = req.profile;
     const { search, page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin
-      .from('customers')
-      .select('*', { count: 'exact' })
-      .eq('residency_id', residency_id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const result = await customerService.getCustomers({
+      residencyId: residency_id,
+      search,
+      page,
+      limit
+    });
 
-    if (search) {
-      query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`);
-    }
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    res.json({ customers: data, total: count, page: Number(page), limit: Number(limit) });
+    res.json(result);
   } catch (err) {
     logger.error('Failed to fetch customers', err);
     res.status(500).json({ error: 'Failed to fetch customers' });
@@ -31,37 +22,17 @@ async function getCustomers(req, res) {
 }
 
 // GET /api/customers/search — Autosuggest search by phone or name
-async function searchCustomers(req, res) {
+async function searchCustomers(req, res, next) {
   try {
     const { residency_id } = req.profile;
     const { q } = req.query;
 
-    if (!q || q.length < 2) {
-      return res.json([]);
-    }
+    const results = await customerService.searchCustomers({
+      residencyId: residency_id,
+      query: q
+    });
 
-    const normalized = q.trim().toLowerCase();
-    const cacheKey = `residency:${residency_id}:customers:search:${normalized}`;
-
-    // 1. Try Redis cache
-    const cached = await getCache(cacheKey);
-    if (cached) {
-      return res.json(cached);
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('customers')
-      .select('id, full_name, phone, age, address, aadhar_number')
-      .eq('residency_id', residency_id)
-      .or(`phone.ilike.%${q}%,full_name.ilike.%${q}%`)
-      .limit(10);
-
-    if (error) throw error;
-
-    // 2. Populate Redis cache
-    await setCache(cacheKey, data, TTL.CUSTOMER_SEARCH);
-
-    res.json(data);
+    res.json(results);
   } catch (err) {
     logger.error('Failed to search customers', err);
     res.status(500).json({ error: 'Failed to search customers' });
@@ -69,154 +40,122 @@ async function searchCustomers(req, res) {
 }
 
 // GET /api/customers/:id — Get single customer with booking history
-async function getCustomer(req, res) {
+async function getCustomer(req, res, next) {
   try {
     const { id } = req.params;
+    const residency_id = req.profile?.residency_id;
 
-    const { data: customer, error } = await supabaseAdmin
-      .from('customers')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-    if (!customer) return res.status(404).json({ error: 'Customer not found' });
-
-    // Fetch booking history
-    const { data: bookings } = await supabaseAdmin
-      .from('bookings')
-      .select(`
-        *,
-        rooms (room_number, room_categories (name))
-      `)
-      .eq('customer_id', id)
-      .order('created_at', { ascending: false });
-
-    res.json({ ...customer, booking_history: bookings || [] });
+    const customer = await customerService.getCustomer({ residencyId: residency_id, id });
+    res.json(customer);
   } catch (err) {
     logger.error('Failed to fetch customer', err);
-    res.status(500).json({ error: 'Failed to fetch customer' });
+    if (err.statusCode === 404) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    res.status(err.statusCode || 500).json({ error: 'Failed to fetch customer' });
   }
 }
 
 // POST /api/customers — Create a new customer
-async function createCustomer(req, res) {
+async function createCustomer(req, res, next) {
   try {
     const { residency_id } = req.profile;
     const { full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url } = req.body;
 
-    if (!full_name || !phone) {
-      return res.status(400).json({ error: 'full_name and phone are required' });
-    }
+    const data = await customerService.createCustomer({
+      residencyId: residency_id,
+      full_name,
+      phone,
+      age,
+      address,
+      aadhar_number,
+      aadhar_photo_url,
+      passport_photo_url
+    });
 
-    const { data, error } = await supabaseAdmin
-      .from('customers')
-      .insert({
-        residency_id, full_name, phone, age, address,
-        aadhar_number, aadhar_photo_url, passport_photo_url
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return res.status(409).json({ error: 'Customer with this phone number already exists' });
-      }
-      throw error;
-    }
-
-    logger.success(`Customer created: ${full_name} (${phone})`);
-    await invalidateCustomerSearchCache(residency_id);
     res.status(201).json(data);
   } catch (err) {
     logger.error('Failed to create customer', err);
-    res.status(500).json({ error: 'Failed to create customer' });
+    if (err.statusCode === 409) {
+      return res.status(409).json({ error: 'Customer with this phone number already exists' });
+    }
+    res.status(err.statusCode || 500).json({ error: 'Failed to create customer' });
   }
 }
 
 // PUT /api/customers/:id — Update a customer
-async function updateCustomer(req, res) {
+async function updateCustomer(req, res, next) {
   try {
     const { id } = req.params;
     const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const { full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url } = req.body;
 
-    const { data, error } = await supabaseAdmin
-      .from('customers')
-      .update({ full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    await invalidateCustomerSearchCache(residency_id);
+    const data = await customerService.updateCustomer({
+      residencyId: residency_id,
+      id,
+      full_name,
+      phone,
+      age,
+      address,
+      aadhar_number,
+      aadhar_photo_url,
+      passport_photo_url
+    });
 
     res.json(data);
   } catch (err) {
     logger.error('Failed to update customer', err);
-    res.status(500).json({ error: 'Failed to update customer' });
+    if (err.statusCode === 404) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    res.status(err.statusCode || 500).json({ error: 'Failed to update customer' });
   }
 }
 
 // POST /api/customers/find-or-create — Find by phone or create new
-async function findOrCreateCustomer(req, res) {
+async function findOrCreateCustomer(req, res, next) {
   try {
     const { residency_id } = req.profile;
     const { full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url } = req.body;
 
-    if (!full_name || !phone) {
-      return res.status(400).json({ error: 'full_name and phone are required' });
-    }
+    const result = await customerService.findOrCreateCustomer({
+      residencyId: residency_id,
+      full_name,
+      phone,
+      age,
+      address,
+      aadhar_number,
+      aadhar_photo_url,
+      passport_photo_url
+    });
 
-    // Try to find existing customer by phone
-    const { data: existing } = await supabaseAdmin
-      .from('customers')
-      .select('*')
-      .eq('residency_id', residency_id)
-      .eq('phone', phone)
-      .single();
-
-    if (existing) {
-      // Update fields if provided
-      const { data: updated } = await supabaseAdmin
-        .from('customers')
-        .update({
-          full_name: full_name || existing.full_name,
-          age: age || existing.age,
-          address: address || existing.address,
-          aadhar_number: aadhar_number || existing.aadhar_number,
-          aadhar_photo_url: aadhar_photo_url || existing.aadhar_photo_url,
-          passport_photo_url: passport_photo_url || existing.passport_photo_url
-        })
-        .eq('id', existing.id)
-        .select()
-        .single();
-
-      await invalidateCustomerSearchCache(residency_id);
-      return res.json({ customer: updated, isNew: false });
-    }
-
-    // Create new customer
-    const { data: newCustomer, error } = await supabaseAdmin
-      .from('customers')
-      .insert({
-        residency_id, full_name, phone, age, address,
-        aadhar_number, aadhar_photo_url, passport_photo_url
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    await invalidateCustomerSearchCache(residency_id);
-
-    logger.success(`New customer created: ${full_name} (${phone})`);
-    res.status(201).json({ customer: newCustomer, isNew: true });
+    res.status(result.isNew ? 201 : 200).json(result);
   } catch (err) {
     logger.error('Failed to find/create customer', err);
-    res.status(500).json({ error: 'Failed to process customer' });
+    res.status(err.statusCode || 500).json({ error: 'Failed to process customer' });
   }
 }
 
-module.exports = { getCustomers, searchCustomers, getCustomer, createCustomer, updateCustomer, findOrCreateCustomer };
+// DELETE /api/customers/:id — Delete a customer
+async function deleteCustomer(req, res, next) {
+  try {
+    const { id } = req.params;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+
+    const result = await customerService.deleteCustomer({ residencyId: residency_id, id });
+    res.json(result);
+  } catch (err) {
+    logger.error('Failed to delete customer', err);
+    res.status(err.statusCode || 500).json({ error: 'Failed to delete customer' });
+  }
+}
+
+module.exports = {
+  getCustomers,
+  searchCustomers,
+  getCustomer,
+  createCustomer,
+  updateCustomer,
+  findOrCreateCustomer,
+  deleteCustomer
+};

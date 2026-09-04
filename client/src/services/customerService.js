@@ -30,4 +30,9 @@ export const customerService = {
     const { data } = await api.put(`/customers/${customerId}`, updates);
     return data;
   },
+
+  async deleteCustomer(customerId) {
+    const { data } = await api.delete(`/customers/${customerId}`);
+    return data;
+  },
 };
