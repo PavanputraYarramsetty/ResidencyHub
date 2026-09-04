@@ -144,6 +144,17 @@ class BookingService {
     const effectiveCheckIn = check_in || new Date().toISOString();
     const effectivePaymentMode = payment_mode || 'UPI';
 
+    // Safely check if userId exists in profiles to satisfy foreign key constraint
+    let validUserId = null;
+    if (userId) {
+      const { data: userProf } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (userProf) validUserId = userProf.id;
+    }
+
     // Create booking and immediately check-in
     const { data: booking, error } = await supabaseAdmin
       .from('bookings')
@@ -159,7 +170,7 @@ class BookingService {
         total_amount: effectiveTotal,
         payment_mode: effectivePaymentMode,
         status: 'checked_in',
-        created_by: userId || '00000000-0000-0000-0000-000000000002'
+        created_by: validUserId
       })
       .select(`
         *,
