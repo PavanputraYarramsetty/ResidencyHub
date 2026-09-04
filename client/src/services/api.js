@@ -8,15 +8,22 @@ const api = axios.create({
 
 // Attach Supabase JWT and demo role to every request
 api.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      config.headers.Authorization = `Bearer ${data.session.access_token}`;
+    }
+  } catch (err) {
+    // Non-blocking: fallback to demo/unauthenticated headers if Supabase auth unreachable
+    console.warn('Supabase getSession notice:', err.message);
   }
   const demoRole = localStorage.getItem('demo_role');
   if (demoRole) {
     config.headers['x-demo-role'] = demoRole;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 // Handle API responses

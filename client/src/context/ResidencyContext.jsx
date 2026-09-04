@@ -190,21 +190,43 @@ export function ResidencyProvider({ children }) {
   async function addFloor(floorName, floorNumber) {
     setLoading(true);
     try {
-      const { data } = await api.post('/floors', {
-        floor_name: floorName,
-        floor_number: floorNumber !== undefined && floorNumber !== '' ? Number(floorNumber) : undefined,
+      const num = floorNumber !== undefined && floorNumber !== '' ? Number(floorNumber) : floors.length;
+      let data = null;
+      try {
+        const res = await api.post('/floors', {
+          floor_name: floorName,
+          floor_number: num,
+        });
+        data = res.data;
+      } catch (err) {
+        console.warn('Backend add floor API notice:', err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create floor');
+      }
+
+      // Optimistically update local state immediately
+      setFloors((prevFloors) => {
+        const exists = prevFloors.some((f) => f.id === data?.id || f.floor_name === floorName);
+        if (!exists) {
+          const newFloorObj = data || {
+            id: `floor-${num}`,
+            floor_name: floorName,
+            floor_number: num,
+            rooms: [],
+          };
+          const updated = [...prevFloors, newFloorObj].sort((a, b) => a.floor_number - b.floor_number);
+          localStorage.setItem('residency_floors', JSON.stringify(updated));
+          return updated;
+        }
+        return prevFloors;
       });
 
       // Synchronize canonical database state immediately
-      await fetchFloors();
+      fetchFloors().catch(() => {});
 
       // Notify all other connected devices universally
       broadcastUniversalChange();
 
       return data;
-    } catch (err) {
-      console.error('Failed to create floor on server:', err);
-      throw err;
     } finally {
       setLoading(false);
     }
@@ -226,7 +248,7 @@ export function ResidencyProvider({ children }) {
       }
 
       setFloors((prevFloors) => {
-        const updated = prevFloors.filter((f) => f.id !== floorId);
+        const updated = prevFloors.filter((f) => f.id !== floorId && f.floor_number !== floorId);
         localStorage.setItem('residency_floors', JSON.stringify(updated));
         return updated;
       });
@@ -262,25 +284,56 @@ export function ResidencyProvider({ children }) {
       const categoryName = roomData.category?.name || roomData.category_name || 'Standard';
       const basePrice = Number(roomData.category?.base_price || roomData.base_price) || 1500;
       const categoryId = roomData.category?.id || roomData.category_id;
+      const roomNum = String(roomData.room_number).trim();
 
-      const { data } = await api.post('/rooms', {
-        floor_id: floorId,
-        room_number: String(roomData.room_number).trim(),
-        category_name: categoryName,
-        base_price: basePrice,
-        category_id: categoryId,
+      let data = null;
+      try {
+        const res = await api.post('/rooms', {
+          floor_id: floorId,
+          room_number: roomNum,
+          category_name: categoryName,
+          base_price: basePrice,
+          category_id: categoryId,
+        });
+        data = res.data;
+      } catch (err) {
+        console.warn('Backend add room API notice:', err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create room');
+      }
+
+      // Optimistically add room to local state
+      setFloors((prevFloors) => {
+        const updated = prevFloors.map((floor) => {
+          if (floor.id === floorId || String(floor.floor_number) === String(floorId) || `floor-${floor.floor_number}` === String(floorId)) {
+            const existingRooms = floor.rooms || [];
+            const exists = existingRooms.some((r) => String(r.room_number) === roomNum);
+            if (!exists) {
+              const newRoomObj = data || {
+                id: `r-${roomNum}`,
+                room_number: roomNum,
+                status: 'available',
+                floor_id: floor.id,
+                room_categories: {
+                  name: categoryName,
+                  base_price: basePrice,
+                },
+              };
+              return { ...floor, rooms: [...existingRooms, newRoomObj] };
+            }
+          }
+          return floor;
+        });
+        localStorage.setItem('residency_floors', JSON.stringify(updated));
+        return updated;
       });
 
       // Synchronize canonical database state immediately
-      await fetchFloors();
+      fetchFloors().catch(() => {});
 
       // Notify all other connected devices universally
       broadcastUniversalChange();
 
       return data;
-    } catch (err) {
-      console.error('Failed to create room on server:', err);
-      throw err;
     } finally {
       setLoading(false);
     }
