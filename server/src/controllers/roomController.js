@@ -1,5 +1,6 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const { getCache, setCache, invalidateRoomsCache, invalidateCategoriesCache, TTL } = require('../services/cache.service');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -8,6 +9,13 @@ async function getRooms(req, res) {
   try {
     const { floor_id } = req.query;
     const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    const cacheKey = `residency:${residency_id}:rooms:${floor_id || 'all'}`;
+
+    // 1. Try Redis cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     let query = supabaseAdmin
       .from('rooms')
@@ -26,6 +34,9 @@ async function getRooms(req, res) {
     const { data, error } = await query;
     if (error) throw error;
 
+    // 2. Populate Redis cache
+    await setCache(cacheKey, data, TTL.ROOMS);
+
     res.json(data);
   } catch (err) {
     logger.error('Failed to fetch rooms', err);
@@ -37,6 +48,14 @@ async function getRooms(req, res) {
 async function getRoom(req, res) {
   try {
     const { id } = req.params;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    const cacheKey = `residency:${residency_id}:room:${id}`;
+
+    // 1. Try Redis cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     const { data: room, error } = await supabaseAdmin
       .from('rooms')
@@ -69,7 +88,12 @@ async function getRoom(req, res) {
       activeBooking = booking;
     }
 
-    res.json({ ...room, active_booking: activeBooking });
+    const result = { ...room, active_booking: activeBooking };
+
+    // 2. Populate Redis cache
+    await setCache(cacheKey, result, TTL.ROOMS);
+
+    res.json(result);
   } catch (err) {
     logger.error('Failed to fetch room', err);
     res.status(500).json({ error: 'Failed to fetch room' });
@@ -197,6 +221,9 @@ async function createRoom(req, res) {
       roomData = insRoom;
     }
 
+    // 4. Invalidate affected caches
+    await invalidateRoomsCache(residency_id);
+
     logger.success(`Room created: ${room_number}`);
     res.status(201).json(roomData);
   } catch (err) {
@@ -229,6 +256,11 @@ async function updateRoom(req, res) {
       .single();
 
     if (error) throw error;
+
+    // Invalidate affected caches
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateRoomsCache(residency_id);
+
     res.json(data);
   } catch (err) {
     logger.error('Failed to update room', err);
@@ -253,6 +285,11 @@ async function deleteRoom(req, res) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Invalidate affected caches
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateRoomsCache(residency_id);
+
     res.json({ message: 'Room deleted successfully', id });
   } catch (err) {
     logger.error('Failed to delete room', err);
@@ -263,13 +300,26 @@ async function deleteRoom(req, res) {
 // GET /api/rooms/categories — List room categories
 async function getCategories(req, res) {
   try {
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    const cacheKey = `residency:${residency_id}:room_categories`;
+
+    // 1. Try Redis cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const { data, error } = await supabaseAdmin
       .from('room_categories')
       .select('*')
-      .eq('residency_id', req.profile.residency_id)
+      .eq('residency_id', residency_id)
       .order('name');
 
     if (error) throw error;
+
+    // 2. Populate Redis cache
+    await setCache(cacheKey, data, TTL.CATEGORIES);
+
     res.json(data);
   } catch (err) {
     logger.error('Failed to fetch categories', err);
@@ -286,10 +336,12 @@ async function createCategory(req, res) {
       return res.status(400).json({ error: 'name and base_price are required' });
     }
 
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+
     const { data, error } = await supabaseAdmin
       .from('room_categories')
       .insert({
-        residency_id: req.profile.residency_id,
+        residency_id,
         name,
         base_price,
         max_occupancy: max_occupancy || 2
@@ -298,6 +350,10 @@ async function createCategory(req, res) {
       .single();
 
     if (error) throw error;
+
+    // Invalidate categories cache
+    await invalidateCategoriesCache(residency_id);
+
     logger.success(`Category created: ${name}`);
     res.status(201).json(data);
   } catch (err) {
@@ -320,6 +376,11 @@ async function updateCategory(req, res) {
       .single();
 
     if (error) throw error;
+
+    // Invalidate categories cache
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateCategoriesCache(residency_id);
+
     res.json(data);
   } catch (err) {
     logger.error('Failed to update category', err);
@@ -338,6 +399,11 @@ async function deleteCategory(req, res) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Invalidate categories cache
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateCategoriesCache(residency_id);
+
     res.json({ message: 'Category deleted successfully' });
   } catch (err) {
     logger.error('Failed to delete category', err);

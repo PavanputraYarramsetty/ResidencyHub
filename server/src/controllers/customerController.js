@@ -1,5 +1,6 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const { getCache, setCache, invalidateCustomerSearchCache, TTL } = require('../services/cache.service');
 
 // GET /api/customers — List all customers with search
 async function getCustomers(req, res) {
@@ -39,6 +40,15 @@ async function searchCustomers(req, res) {
       return res.json([]);
     }
 
+    const normalized = q.trim().toLowerCase();
+    const cacheKey = `residency:${residency_id}:customers:search:${normalized}`;
+
+    // 1. Try Redis cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const { data, error } = await supabaseAdmin
       .from('customers')
       .select('id, full_name, phone, age, address, aadhar_number')
@@ -47,6 +57,10 @@ async function searchCustomers(req, res) {
       .limit(10);
 
     if (error) throw error;
+
+    // 2. Populate Redis cache
+    await setCache(cacheKey, data, TTL.CUSTOMER_SEARCH);
+
     res.json(data);
   } catch (err) {
     logger.error('Failed to search customers', err);
@@ -112,6 +126,7 @@ async function createCustomer(req, res) {
     }
 
     logger.success(`Customer created: ${full_name} (${phone})`);
+    await invalidateCustomerSearchCache(residency_id);
     res.status(201).json(data);
   } catch (err) {
     logger.error('Failed to create customer', err);
@@ -123,6 +138,7 @@ async function createCustomer(req, res) {
 async function updateCustomer(req, res) {
   try {
     const { id } = req.params;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const { full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url } = req.body;
 
     const { data, error } = await supabaseAdmin
@@ -133,6 +149,9 @@ async function updateCustomer(req, res) {
       .single();
 
     if (error) throw error;
+
+    await invalidateCustomerSearchCache(residency_id);
+
     res.json(data);
   } catch (err) {
     logger.error('Failed to update customer', err);
@@ -174,6 +193,7 @@ async function findOrCreateCustomer(req, res) {
         .select()
         .single();
 
+      await invalidateCustomerSearchCache(residency_id);
       return res.json({ customer: updated, isNew: false });
     }
 
@@ -188,6 +208,8 @@ async function findOrCreateCustomer(req, res) {
       .single();
 
     if (error) throw error;
+
+    await invalidateCustomerSearchCache(residency_id);
 
     logger.success(`New customer created: ${full_name} (${phone})`);
     res.status(201).json({ customer: newCustomer, isNew: true });

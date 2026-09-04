@@ -1,6 +1,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { computeCheckoutBilling } = require('../services/billing.service');
 const { logger } = require('../utils/logger');
+const { getCache, setCache, invalidateBookingsCache, invalidateCustomerSearchCache, TTL } = require('../services/cache.service');
 
 // GET /api/bookings — List bookings with filters
 async function getBookings(req, res) {
@@ -156,6 +157,11 @@ async function createBooking(req, res) {
       .eq('id', room_id);
 
     logger.success(`Booking created for room ${booking.rooms?.room_number || room.room_number}`);
+    await invalidateBookingsCache(residency_id);
+    if (!req.body.customer_id && (phone || full_name)) {
+      await invalidateCustomerSearchCache(residency_id);
+    }
+
     res.status(201).json(booking);
   } catch (err) {
     logger.error('Failed to create booking', err);
@@ -206,6 +212,10 @@ async function recordCheckIn(req, res) {
       .from('rooms')
       .update({ status: 'occupied' })
       .eq('id', booking.room_id);
+
+    // Invalidate affected caches
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateBookingsCache(residency_id);
 
     logger.success(`Check-in recorded for booking ${id}`);
     res.json(updated);
@@ -273,6 +283,10 @@ async function recordCheckOut(req, res) {
       .update({ status: 'available' })
       .eq('id', booking.room_id);
 
+    // Invalidate affected caches
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateBookingsCache(residency_id);
+
     logger.success(`Checkout completed — Room ${updated.rooms.room_number}: ${billableDays} day(s), ₹${totalAmount} (${durationHours}h stay)`);
 
     res.json({
@@ -316,6 +330,10 @@ async function cancelBooking(req, res) {
       .update({ status: 'available' })
       .eq('id', booking.room_id);
 
+    // Invalidate affected caches
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    await invalidateBookingsCache(residency_id);
+
     logger.success(`Booking ${id} cancelled`);
     res.json(updated);
   } catch (err) {
@@ -327,6 +345,15 @@ async function cancelBooking(req, res) {
 // GET /api/bookings/stats/today — Quick stats for dashboard
 async function getTodayStats(req, res) {
   try {
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    const cacheKey = `residency:${residency_id}:dashboard:today_stats`;
+
+    // 1. Try Redis cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date();
@@ -347,11 +374,16 @@ async function getTodayStats(req, res) {
 
     const todayRevenue = todayCheckOuts?.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0) || 0;
 
-    res.json({
+    const result = {
       today_check_ins: todayCheckIns?.length || 0,
       today_check_outs: todayCheckOuts?.length || 0,
       today_revenue: todayRevenue
-    });
+    };
+
+    // 2. Populate Redis cache
+    await setCache(cacheKey, result, TTL.DASHBOARD_STATS);
+
+    res.json(result);
   } catch (err) {
     logger.error('Failed to fetch today stats', err);
     res.status(500).json({ error: 'Failed to fetch statistics' });

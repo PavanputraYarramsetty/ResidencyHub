@@ -28,7 +28,7 @@ if (redisUrl && redisUrl.trim()) {
 
     redisClient.on('ready', () => {
       isReady = true;
-      logger.success('Redis connected & ready for caching');
+      logger.success('Redis connected');
     });
 
     redisClient.on('reconnecting', () => {

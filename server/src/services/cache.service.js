@@ -17,7 +17,10 @@ const TTL = {
  * @returns {Promise<any|null>}
  */
 async function getCache(key) {
-  if (!isRedisAvailable()) return null;
+  if (!isRedisAvailable()) {
+    logger.info('Redis unavailable — falling back to Supabase');
+    return null;
+  }
 
   try {
     const raw = await redisClient.get(key);
@@ -37,6 +40,7 @@ async function getCache(key) {
     }
   } catch (err) {
     logger.warn(`Redis getCache error (${key}): ${err.message}`);
+    logger.info('Redis unavailable — falling back to Supabase');
     return null;
   }
 }
@@ -54,7 +58,7 @@ async function setCache(key, value, ttlSeconds = 60) {
   try {
     const serialized = JSON.stringify(value);
     await redisClient.set(key, serialized, { EX: ttlSeconds });
-    logger.info(`Redis cache SET: ${key} (TTL: ${ttlSeconds}s)`);
+    logger.info(`Redis cache SET: ${key}`);
     return true;
   } catch (err) {
     logger.warn(`Redis setCache error (${key}): ${err.message}`);
@@ -97,8 +101,8 @@ async function deletePattern(pattern) {
     }
 
     if (keysToDelete.length > 0) {
-      const deletedCount = await redisClient.del(keysToDelete);
-      logger.info(`Redis cache invalidated pattern: ${pattern} (${deletedCount} key(s))`);
+      const deletedCount = await redisClient.del(...keysToDelete);
+      logger.info(`Redis cache invalidated: ${pattern}`);
       return deletedCount;
     }
 
@@ -116,7 +120,7 @@ async function deletePattern(pattern) {
 async function invalidateRoomsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:rooms*`),
+    deletePattern(`residency:${residency_id}:room*`),
     deletePattern(`residency:${residency_id}:dashboard*`),
   ]);
 }
@@ -125,7 +129,7 @@ async function invalidateFloorsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
     deletePattern(`residency:${residency_id}:floors*`),
-    deletePattern(`residency:${residency_id}:rooms*`),
+    deletePattern(`residency:${residency_id}:room*`),
     deletePattern(`residency:${residency_id}:dashboard*`),
   ]);
 }
@@ -134,14 +138,14 @@ async function invalidateCategoriesCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
     deletePattern(`residency:${residency_id}:room_categories*`),
-    deletePattern(`residency:${residency_id}:rooms*`),
+    deletePattern(`residency:${residency_id}:room*`),
   ]);
 }
 
 async function invalidateBookingsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:rooms*`),
+    deletePattern(`residency:${residency_id}:room*`),
     deletePattern(`residency:${residency_id}:dashboard*`),
     deletePattern(`residency:${residency_id}:revenue*`),
   ]);

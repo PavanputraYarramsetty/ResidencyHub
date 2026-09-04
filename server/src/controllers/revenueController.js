@@ -1,10 +1,19 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const { getCache, setCache, TTL } = require('../services/cache.service');
 
 // GET /api/revenue — Revenue summary with filters
 async function getRevenueSummary(req, res) {
   try {
     const { from_date, to_date, floor_id, category_id, period } = req.query;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    const cacheKey = `residency:${residency_id}:revenue:${from_date || ''}:${to_date || ''}:${floor_id || ''}:${category_id || ''}:${period || ''}`;
+
+    // 1. Try Redis cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     // Query completed bookings directly for more flexible filtering
     let query = supabaseAdmin
@@ -18,7 +27,7 @@ async function getRevenueSummary(req, res) {
         )
       `)
       .eq('status', 'checked_out')
-      .eq('rooms.floors.residency_id', req.profile.residency_id)
+      .eq('rooms.floors.residency_id', residency_id)
       .not('total_amount', 'is', null)
       .order('check_out', { ascending: false });
 
@@ -61,14 +70,19 @@ async function getRevenueSummary(req, res) {
       byCategory[catName].bookings += 1;
     });
 
-    res.json({
+    const result = {
       total_revenue: parseFloat(totalRevenue.toFixed(2)),
       total_bookings: totalBookings,
       by_date: Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date)),
       by_floor: Object.values(byFloor),
       by_category: Object.values(byCategory),
       bookings: data
-    });
+    };
+
+    // 2. Populate Redis cache
+    await setCache(cacheKey, result, TTL.REVENUE);
+
+    res.json(result);
   } catch (err) {
     logger.error('Failed to fetch revenue', err);
     res.status(500).json({ error: 'Failed to fetch revenue data' });
