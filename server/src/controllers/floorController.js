@@ -1,11 +1,20 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const { getCache, setCache, invalidateFloorsCache, TTL } = require('../services/cache.service');
 
 // GET /api/floors — List all floors for the user's residency
 async function getFloors(req, res) {
   try {
     const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
+    const cacheKey = `residency:${residency_id}:floors`;
 
+    // 1. Try Redis cache
+    const cachedFloors = await getCache(cacheKey);
+    if (cachedFloors) {
+      return res.json(cachedFloors);
+    }
+
+    // 2. Query Supabase on cache miss
     const { data, error } = await supabaseAdmin
       .from('floors')
       .select(`
@@ -44,6 +53,9 @@ async function getFloors(req, res) {
         stats: { totalRooms, occupiedRooms, availableRooms, reservedRooms }
       };
     });
+
+    // 3. Populate Redis cache
+    await setCache(cacheKey, floorsWithStats, TTL.FLOORS);
 
     res.json(floorsWithStats);
   } catch (err) {
@@ -97,6 +109,10 @@ async function createFloor(req, res) {
         .single();
 
       if (updErr) throw updErr;
+
+      // Invalidate floors cache
+      await invalidateFloorsCache(residency_id);
+
       return res.status(200).json(updatedFloor || existingFloor);
     }
 
@@ -109,6 +125,9 @@ async function createFloor(req, res) {
     if (error) {
       throw error;
     }
+
+    // Invalidate floors cache
+    await invalidateFloorsCache(residency_id);
 
     logger.success(`Floor created: ${floor_name} (${floor_number})`);
     res.status(201).json({ ...data, rooms: data.rooms || [] });
@@ -123,6 +142,7 @@ async function updateFloor(req, res) {
   try {
     const { id } = req.params;
     const { floor_number, floor_name } = req.body;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
 
     const { data, error } = await supabaseAdmin
       .from('floors')
@@ -133,6 +153,9 @@ async function updateFloor(req, res) {
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Floor not found' });
+
+    // Invalidate floors cache
+    await invalidateFloorsCache(residency_id);
 
     res.json(data);
   } catch (err) {
@@ -145,6 +168,7 @@ async function updateFloor(req, res) {
 async function deleteFloor(req, res) {
   try {
     const { id } = req.params;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
 
     // First get rooms on this floor to delete bookings
     const { data: roomsOnFloor } = await supabaseAdmin
@@ -164,6 +188,9 @@ async function deleteFloor(req, res) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Invalidate floors cache
+    await invalidateFloorsCache(residency_id);
 
     res.json({ message: 'Floor deleted successfully', id });
   } catch (err) {

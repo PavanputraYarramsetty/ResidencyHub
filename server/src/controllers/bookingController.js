@@ -327,19 +327,22 @@ async function cancelBooking(req, res) {
 // GET /api/bookings/stats/today — Quick stats for dashboard
 async function getTodayStats(req, res) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
 
     const { data: todayCheckIns } = await supabaseAdmin
       .from('bookings')
       .select('id', { count: 'exact' })
-      .gte('check_in', `${today}T00:00:00`)
-      .lte('check_in', `${today}T23:59:59`);
+      .gte('check_in', startOfDay.toISOString())
+      .lte('check_in', endOfDay.toISOString());
 
     const { data: todayCheckOuts } = await supabaseAdmin
       .from('bookings')
       .select('id, total_amount', { count: 'exact' })
-      .gte('check_out', `${today}T00:00:00`)
-      .lte('check_out', `${today}T23:59:59`)
+      .gte('check_out', startOfDay.toISOString())
+      .lte('check_out', endOfDay.toISOString())
       .eq('status', 'checked_out');
 
     const todayRevenue = todayCheckOuts?.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0) || 0;
