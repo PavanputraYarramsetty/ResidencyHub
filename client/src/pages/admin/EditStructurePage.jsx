@@ -27,10 +27,10 @@ export default function EditStructurePage() {
   const [customPrice, setCustomPrice] = useState('1500');
 
   // Handle Create Floor
-  function handleCreateFloor(e) {
+  async function handleCreateFloor(e) {
     e.preventDefault();
     if (!newFloorName) return toast.error('Please enter a floor name');
-    addFloor(newFloorName, newFloorNumber || floors.length);
+    await addFloor(newFloorName, newFloorNumber !== '' ? newFloorNumber : floors.length);
     toast.success(`Floor "${newFloorName}" created successfully!`);
     setNewFloorName('');
     setNewFloorNumber('');
@@ -38,9 +38,9 @@ export default function EditStructurePage() {
   }
 
   // Handle Delete Floor
-  function handleDeleteFloor(floor) {
+  async function handleDeleteFloor(floor) {
     if (window.confirm(`Are you sure you want to delete ${floor.floor_name} and all rooms in it?`)) {
-      deleteFloor(floor.id);
+      await deleteFloor(floor.id);
       toast.success(`${floor.floor_name} removed.`);
     }
   }
@@ -55,19 +55,18 @@ export default function EditStructurePage() {
   }
 
   // Handle Create Room
-  function handleCreateRoom(e) {
+  async function handleCreateRoom(e) {
     e.preventDefault();
     if (!newRoomNumber) return toast.error('Please enter a room number');
     if (!customCategoryName) return toast.error('Please enter a category name');
     if (!targetFloorId) return toast.error('Target floor required');
 
     const categoryObj = {
-      id: `cat-${customCategoryName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
       name: customCategoryName.trim(),
-      base_price: customPrice ? parseFloat(customPrice) : 1000,
+      base_price: customPrice ? parseFloat(customPrice) : 1500,
     };
 
-    addRoom(targetFloorId, {
+    await addRoom(targetFloorId, {
       room_number: newRoomNumber,
       category: categoryObj,
     });
@@ -78,9 +77,9 @@ export default function EditStructurePage() {
   }
 
   // Handle Delete Room
-  function handleDeleteRoom(floorId, room) {
+  async function handleDeleteRoom(floorId, room) {
     if (window.confirm(`Are you sure you want to remove Room ${room.room_number}?`)) {
-      deleteRoom(floorId, room.id);
+      await deleteRoom(floorId, room.id);
       toast.success(`Room ${room.room_number} deleted.`);
     }
   }

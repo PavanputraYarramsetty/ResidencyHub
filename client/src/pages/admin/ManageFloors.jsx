@@ -15,19 +15,12 @@ export default function ManageFloors() {
 
     try {
       setSubmitting(true);
-      await api.post('/floors', {
-        floor_name: floorName,
-        floor_number: parseInt(floorNumber, 10),
-      });
-      toast.success(`Floor "${floorName}" created!`);
-      setFloorName('');
-      setFloorNumber('');
-      refreshData();
-    } catch (err) {
-      addFloor(floorName, parseInt(floorNumber, 10));
+      await addFloor(floorName, parseInt(floorNumber, 10));
       toast.success(`Floor "${floorName}" created successfully!`);
       setFloorName('');
       setFloorNumber('');
+    } catch (err) {
+      toast.error('Failed to create floor');
     } finally {
       setSubmitting(false);
     }

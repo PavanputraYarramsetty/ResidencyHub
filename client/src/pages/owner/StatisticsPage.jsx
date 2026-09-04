@@ -17,9 +17,10 @@ export default function StatisticsPage() {
   async function fetchLogs() {
     try {
       setLoading(true);
-      const { data } = await api.get('/bookings/revenue');
+      const { data } = await api.get('/revenue');
+      const serverBookings = data?.bookings || (Array.isArray(data) ? data : []);
       const localLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
-      const combined = [...localLedger, ...(data || [])];
+      const combined = [...localLedger, ...serverBookings];
       setLogs(combined.length > 0 ? combined : MOCK_AUDIT_LOGS);
     } catch (err) {
       const localLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');

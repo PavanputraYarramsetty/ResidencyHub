@@ -116,7 +116,12 @@ async function createBooking(req, res) {
     }
 
     const effectiveRate = rate_per_day || room.room_categories?.base_price || 1000;
+    const effectiveDays = Number(req.body.no_of_days || 1);
+    const effectiveAdvance = Number(req.body.advance_amount || 0);
+    const effectiveTotal = Number(req.body.total_amount || (effectiveRate * effectiveDays));
     const effectiveDate = booking_date || new Date().toISOString().split('T')[0];
+    const effectiveCheckIn = req.body.check_in || new Date().toISOString();
+    const effectivePaymentMode = req.body.payment_mode || 'UPI';
 
     // Create booking and immediately check-in
     const { data: booking, error } = await supabaseAdmin
@@ -125,11 +130,15 @@ async function createBooking(req, res) {
         room_id,
         customer_id,
         no_of_persons: no_of_persons || 1,
+        no_of_days: effectiveDays,
         booking_date: effectiveDate,
-        check_in: new Date().toISOString(),
+        check_in: effectiveCheckIn,
         rate_per_day: effectiveRate,
+        advance_amount: effectiveAdvance,
+        total_amount: effectiveTotal,
+        payment_mode: effectivePaymentMode,
         status: 'checked_in',
-        created_by: req.profile.id
+        created_by: req.profile?.id || '00000000-0000-0000-0000-000000000002'
       })
       .select(`
         *,
@@ -146,11 +155,11 @@ async function createBooking(req, res) {
       .update({ status: 'occupied' })
       .eq('id', room_id);
 
-    logger.success(`Booking created for room ${booking.rooms.room_number}`);
+    logger.success(`Booking created for room ${booking.rooms?.room_number || room.room_number}`);
     res.status(201).json(booking);
   } catch (err) {
     logger.error('Failed to create booking', err);
-    res.status(500).json({ error: 'Failed to create booking' });
+    res.status(500).json({ error: 'Failed to create booking', message: err.message });
   }
 }
 

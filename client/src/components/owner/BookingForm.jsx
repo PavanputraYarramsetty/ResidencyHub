@@ -159,13 +159,6 @@ export default function BookingForm({ isOpen, onClose, preselectedRoomId, presel
       size="xl"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-space-md">
-        {/* Instant Guest Search Lookup */}
-        <div className="p-space-sm bg-surface-container-low rounded-xl flex items-center justify-between gap-space-md border border-surface-container-high/60">
-          <div className="flex-1">
-            <CustomerAutosuggest onSelectCustomer={handleSelectCustomer} />
-          </div>
-        </div>
-
         {/* Selected Room Highlight Badge & Live Check-In Timestamp */}
         <div className="p-space-md rounded-xl bg-primary-container text-on-primary flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md border border-secondary/30 shadow-xs">
           <div className="flex items-center gap-space-md">

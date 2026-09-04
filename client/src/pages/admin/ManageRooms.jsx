@@ -37,21 +37,14 @@ export default function ManageRooms() {
 
     try {
       setSubmitting(true);
-      await api.post('/rooms', {
-        room_number: roomNumber,
-        floor_id: floorId,
-        category_id: categoryId,
-      });
-      toast.success(`Room ${roomNumber} added!`);
-      setRoomNumber('');
-      refreshData();
-    } catch (err) {
-      addRoom(floorId, {
+      await addRoom(floorId, {
         room_number: roomNumber,
         category: selCategory,
       });
       toast.success(`Room ${roomNumber} added successfully! 🏨`);
       setRoomNumber('');
+    } catch (err) {
+      toast.error('Failed to add room');
     } finally {
       setSubmitting(false);
     }

@@ -18,9 +18,10 @@ export default function RevenuePage() {
   async function fetchRevenue() {
     try {
       setLoading(true);
-      const { data } = await api.get('/bookings/revenue');
+      const { data } = await api.get('/revenue');
+      const serverBookings = data?.bookings || (Array.isArray(data) ? data : []);
       const localLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
-      const combined = [...localLedger, ...(data || [])];
+      const combined = [...localLedger, ...serverBookings];
       setRevenueData(combined.length > 0 ? combined : MOCK_REVENUE_ITEMS);
     } catch (err) {
       const localLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');

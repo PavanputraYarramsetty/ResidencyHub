@@ -6,6 +6,7 @@ const { supabaseAdmin } = require('../config/supabase');
  */
 async function authenticate(req, res, next) {
   try {
+    const authHeader = req.headers.authorization;
     const isDemoAdmin = req.headers['x-demo-role'] === 'admin';
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       const role = isDemoAdmin ? 'admin' : 'owner';

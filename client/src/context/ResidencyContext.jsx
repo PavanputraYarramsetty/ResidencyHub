@@ -14,6 +14,22 @@ const MOCK_CATEGORIES = [
 
 const INITIAL_MOCK_FLOORS = [];
 
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+
+const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('residency_sync_channel') : null;
+
+function notifyStructureChange() {
+  localStorage.setItem('residency_last_sync', Date.now().toString());
+  window.dispatchEvent(new Event('residency_updated'));
+  if (syncChannel) {
+    try {
+      syncChannel.postMessage({ type: 'RESIDENCY_STRUCTURE_UPDATED', timestamp: Date.now() });
+    } catch (e) {
+      /* ignore */
+    }
+  }
+}
+
 export function ResidencyProvider({ children }) {
   const { isAuthenticated } = useAuth();
   
@@ -40,48 +56,117 @@ export function ResidencyProvider({ children }) {
     }
   }, [isAuthenticated]);
 
+  // Realtime & Cross-Tab Listeners
+  useEffect(() => {
+    // 1. Cross-Tab Broadcast Channel (Owner <-> Admin tabs)
+    if (syncChannel) {
+      const handleBroadcast = (event) => {
+        if (event.data?.type === 'RESIDENCY_STRUCTURE_UPDATED') {
+          fetchFloors();
+          fetchCategories();
+        }
+      };
+      syncChannel.addEventListener('message', handleBroadcast);
+      return () => syncChannel.removeEventListener('message', handleBroadcast);
+    }
+  }, []);
+
+  // 2. Supabase Realtime multi-device sync
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const channel = supabase
+      .channel('residency-realtime-all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'floors' }, () => {
+        fetchFloors();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+        fetchFloors();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_categories' }, () => {
+        fetchFloors();
+        fetchCategories();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        fetchFloors();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // 3. Window focus refresh
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchFloors();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // 4. Local storage & custom events
+  useEffect(() => {
+    function handleSync() {
+      const saved = localStorage.getItem('residency_floors');
+      if (saved) {
+        try {
+          setFloors(JSON.parse(saved));
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('residency_updated', handleSync);
+
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('residency_updated', handleSync);
+    };
+  }, []);
+
   async function fetchFloors() {
     try {
       setLoading(true);
       const { data } = await api.get('/floors');
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         // Merge with local overrides if room was marked occupied/available locally
         const saved = localStorage.getItem('residency_floors');
+        let statusMap = new Map();
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
-            const statusMap = new Map();
             parsed.forEach((pf) => {
               (pf.rooms || []).forEach((pr) => {
                 statusMap.set(pr.id, { status: pr.status, active_booking: pr.active_booking });
                 statusMap.set(String(pr.room_number), { status: pr.status, active_booking: pr.active_booking });
               });
             });
-
-            const mergedFloors = data.map((f) => ({
-              ...f,
-              rooms: (f.rooms || []).map((r) => {
-                const override = statusMap.get(r.id) || statusMap.get(String(r.room_number));
-                if (override) {
-                  return {
-                    ...r,
-                    status: override.status || r.status,
-                    active_booking: override.active_booking !== undefined ? override.active_booking : r.active_booking,
-                  };
-                }
-                return r;
-              }),
-            }));
-            setFloors(mergedFloors);
-            return;
           } catch (e) {
             /* ignore */
           }
         }
-        setFloors(data);
+
+        const mergedFloors = data.map((f) => ({
+          ...f,
+          rooms: (f.rooms || []).map((r) => {
+            const override = statusMap.get(r.id) || statusMap.get(String(r.room_number));
+            if (override && (r.status === 'available' || !r.active_booking)) {
+              return {
+                ...r,
+                status: override.status || r.status,
+                active_booking: override.active_booking !== undefined ? override.active_booking : r.active_booking,
+              };
+            }
+            return r;
+          }),
+        }));
+        setFloors(mergedFloors);
+        localStorage.setItem('residency_floors', JSON.stringify(mergedFloors));
       }
     } catch (err) {
-      // Keep local state
+      console.warn('Fetch floors notice — keeping local cache:', err.message);
     } finally {
       setLoading(false);
     }
@@ -135,14 +220,15 @@ export function ResidencyProvider({ children }) {
         }),
       }));
       localStorage.setItem('residency_floors', JSON.stringify(updated));
+      notifyStructureChange();
       return updated;
     });
   }
 
   // Mark room available on checkout
   function markRoomAvailable(roomId, checkoutSummary) {
-    setFloors((prevFloors) =>
-      prevFloors.map((floor) => ({
+    setFloors((prevFloors) => {
+      const updated = prevFloors.map((floor) => ({
         ...floor,
         rooms: (floor.rooms || []).map((room) => {
           if (room.id === roomId) {
@@ -154,8 +240,11 @@ export function ResidencyProvider({ children }) {
           }
           return room;
         }),
-      }))
-    );
+      }));
+      localStorage.setItem('residency_floors', JSON.stringify(updated));
+      notifyStructureChange();
+      return updated;
+    });
 
     // Save checkout log to localStorage for Statistics & Revenue
     const savedLedger = JSON.parse(localStorage.getItem('residency_audit_ledger') || '[]');
@@ -172,30 +261,11 @@ export function ResidencyProvider({ children }) {
     localStorage.setItem('residency_audit_ledger', JSON.stringify([newLog, ...savedLedger]));
   }
 
-  useEffect(() => {
-    function handleSync() {
-      const saved = localStorage.getItem('residency_floors');
-      if (saved) {
-        try {
-          setFloors(JSON.parse(saved));
-        } catch (e) { /* ignore */ }
-      }
-    }
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('residency_updated', handleSync);
-
-    return () => {
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('residency_updated', handleSync);
-    };
-  }, []);
-
   // Structural Management — Add Floor
   async function addFloor(floorName, floorNumber) {
-    const newFloorId = `floor-${Date.now()}`;
+    const tempFloorId = `floor-${Date.now()}`;
     const newFloor = {
-      id: newFloorId,
+      id: tempFloorId,
       floor_number: Number(floorNumber) || floors.length,
       floor_name: floorName || `Floor ${floors.length + 1}`,
       stats: { totalRooms: 0, occupiedRooms: 0, availableRooms: 0, reservedRooms: 0 },
@@ -205,15 +275,31 @@ export function ResidencyProvider({ children }) {
     const updated = [...floors, newFloor];
     setFloors(updated);
     localStorage.setItem('residency_floors', JSON.stringify(updated));
-    window.dispatchEvent(new Event('residency_updated'));
+    notifyStructureChange();
 
     try {
-      await api.post('/floors', {
+      const { data } = await api.post('/floors', {
         floor_name: floorName,
         floor_number: Number(floorNumber) || 0,
       });
+
+      if (data && data.id) {
+        setFloors((prevFloors) => {
+          const synced = prevFloors.map((f) => {
+            if (f.id === tempFloorId || f.floor_number === data.floor_number) {
+              return { ...f, ...data, rooms: f.rooms || data.rooms || [] };
+            }
+            return f;
+          });
+          localStorage.setItem('residency_floors', JSON.stringify(synced));
+          return synced;
+        });
+        notifyStructureChange();
+      }
+      return data;
     } catch (e) {
-      /* local state active */
+      console.warn('Backend addFloor notice — local floor kept:', e.message);
+      return newFloor;
     }
   }
 
@@ -222,14 +308,15 @@ export function ResidencyProvider({ children }) {
     const updated = floors.filter((f) => f.id !== floorId);
     setFloors(updated);
     localStorage.setItem('residency_floors', JSON.stringify(updated));
-    window.dispatchEvent(new Event('residency_updated'));
+    notifyStructureChange();
 
     try {
       if (floorId && !floorId.startsWith('floor-')) {
         await api.delete(`/floors/${floorId}`);
       }
+      notifyStructureChange();
     } catch (e) {
-      /* local state active */
+      console.warn('Backend deleteFloor notice:', e.message);
     }
   }
 
@@ -241,9 +328,11 @@ export function ResidencyProvider({ children }) {
       base_price: Number(roomData.base_price) || 1500,
     };
 
+    const tempRoomId = `r-${Date.now()}`;
     const newRoom = {
-      id: `r-${Date.now()}`,
-      room_number: roomData.room_number,
+      id: tempRoomId,
+      floor_id: floorId,
+      room_number: String(roomData.room_number),
       status: 'available',
       category_id: categoryObj.id,
       room_categories: categoryObj,
@@ -261,16 +350,40 @@ export function ResidencyProvider({ children }) {
 
     setFloors(updated);
     localStorage.setItem('residency_floors', JSON.stringify(updated));
-    window.dispatchEvent(new Event('residency_updated'));
+    notifyStructureChange();
 
     try {
-      await api.post('/rooms', {
+      const { data } = await api.post('/rooms', {
         floor_id: floorId,
         room_number: roomData.room_number,
         category_id: categoryObj.id,
+        category_name: categoryObj.name,
+        base_price: categoryObj.base_price,
       });
+
+      if (data && data.id) {
+        setFloors((prevFloors) => {
+          const synced = prevFloors.map((f) => {
+            if (f.id === floorId || f.id === data.floor_id) {
+              const updatedRooms = (f.rooms || []).map((r) => {
+                if (r.id === tempRoomId || String(r.room_number) === String(data.room_number)) {
+                  return { ...r, ...data };
+                }
+                return r;
+              });
+              return { ...f, rooms: updatedRooms };
+            }
+            return f;
+          });
+          localStorage.setItem('residency_floors', JSON.stringify(synced));
+          return synced;
+        });
+        notifyStructureChange();
+      }
+      return data;
     } catch (e) {
-      /* local state active */
+      console.warn('Backend addRoom notice — local room kept:', e.message);
+      return newRoom;
     }
   }
 
@@ -288,24 +401,31 @@ export function ResidencyProvider({ children }) {
 
     setFloors(updated);
     localStorage.setItem('residency_floors', JSON.stringify(updated));
-    window.dispatchEvent(new Event('residency_updated'));
+    notifyStructureChange();
 
     try {
       if (roomId && !roomId.startsWith('r-')) {
         await api.delete(`/rooms/${roomId}`);
       }
+      notifyStructureChange();
     } catch (e) {
-      /* local state active */
+      console.warn('Backend deleteRoom notice:', e.message);
     }
   }
 
   // Complete Data Reset — Wipe all bookings, ledgers & restore available rooms
-  function resetAllResidencyData() {
+  async function resetAllResidencyData() {
     localStorage.removeItem('residency_floors');
     localStorage.removeItem('residency_audit_ledger');
     setFloors(INITIAL_MOCK_FLOORS);
     localStorage.setItem('residency_floors', JSON.stringify(INITIAL_MOCK_FLOORS));
-    window.dispatchEvent(new Event('residency_updated'));
+    notifyStructureChange();
+    try {
+      // Fetch latest clean structure from server
+      await fetchFloors();
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   const value = {
