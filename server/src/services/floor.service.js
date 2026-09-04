@@ -19,7 +19,7 @@ class FloorService {
       return cachedFloors;
     }
 
-    // 2. Query Supabase on cache miss
+    // 2. Query Supabase on cache miss — include rooms with category and active booking data
     const { data, error } = await supabaseAdmin
       .from('floors')
       .select(`
@@ -38,14 +38,57 @@ class FloorService {
 
     if (error) throw error;
 
-    // Add occupancy stats to each floor
+    // 3. Fetch all active bookings for this residency in ONE query (efficient)
+    const { data: activeBookings } = await supabaseAdmin
+      .from('bookings')
+      .select(`
+        id,
+        room_id,
+        check_in,
+        check_out,
+        rate_per_day,
+        no_of_days,
+        no_of_persons,
+        advance_amount,
+        total_amount,
+        payment_mode,
+        status,
+        customers (
+          id,
+          full_name,
+          phone,
+          age,
+          gender,
+          aadhar_number,
+          address
+        )
+      `)
+      .in('status', ['booked', 'checked_in'])
+      .order('created_at', { ascending: false });
+
+    // Build a map: room_id -> active_booking for O(1) lookup
+    const bookingByRoomId = {};
+    (activeBookings || []).forEach(b => {
+      // Only keep the most recent active booking per room
+      if (!bookingByRoomId[b.room_id]) {
+        bookingByRoomId[b.room_id] = b;
+      }
+    });
+
+    // 4. Attach active_booking to each room and compute floor stats
     const floorsWithStats = (data || []).map(floor => {
-      const rooms = (floor.rooms || []).sort((a, b) => {
-        const numA = parseInt(a.room_number, 10);
-        const numB = parseInt(b.room_number, 10);
-        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-        return String(a.room_number).localeCompare(String(b.room_number));
-      });
+      const rooms = (floor.rooms || [])
+        .map(room => ({
+          ...room,
+          floor_name: floor.floor_name,
+          active_booking: bookingByRoomId[room.id] || null
+        }))
+        .sort((a, b) => {
+          const numA = parseInt(a.room_number, 10);
+          const numB = parseInt(b.room_number, 10);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return String(a.room_number).localeCompare(String(b.room_number));
+        });
 
       const totalRooms = rooms.length;
       const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
@@ -59,7 +102,7 @@ class FloorService {
       };
     });
 
-    // 3. Populate Redis cache
+    // 5. Populate Redis cache
     await setCache(cacheKey, floorsWithStats, TTL.FLOORS);
 
     return floorsWithStats;
