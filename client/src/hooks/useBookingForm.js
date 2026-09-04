@@ -164,7 +164,7 @@ export function useBookingForm({ isOpen, onClose, preselectedRoomId, preselected
         console.warn('Booking API warning, falling back to local optimistic state', err?.message);
       });
 
-      markRoomOccupied(roomId);
+      markRoomOccupied(roomId, payload);
       toast.success(`Room ${selectedRoomObj?.room_number || ''} booked & checked-in successfully! 🎉`);
       onSuccess?.();
       resetForm();

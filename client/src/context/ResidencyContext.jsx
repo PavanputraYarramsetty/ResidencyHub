@@ -338,14 +338,14 @@ export function ResidencyProvider({ children }) {
   }
 
   // Mark room occupied (Local optimistic + universal broadcast)
-  function markRoomOccupied(roomId, bookingData) {
+  function markRoomOccupied(roomId, bookingData = {}) {
     setFloors((prevFloors) => {
       const updated = prevFloors.map((floor) => ({
         ...floor,
         rooms: (floor.rooms || []).map((room) => {
           if (room.id === roomId || String(room.room_number) === String(roomId)) {
-            const dailyRate = bookingData.rate_per_day || room.room_categories?.base_price || 1000;
-            const days = bookingData.no_of_days || 1;
+            const dailyRate = Number(bookingData.rate_per_day || room.room_categories?.base_price || 1000);
+            const days = Number(bookingData.no_of_days || 1);
             const advance = Number(bookingData.advance_amount || 0);
             return {
               ...room,
@@ -353,12 +353,12 @@ export function ResidencyProvider({ children }) {
               active_booking: {
                 id: `bk-${Date.now()}`,
                 customers: {
-                  full_name: bookingData.full_name,
-                  phone: bookingData.phone,
+                  full_name: bookingData.full_name || 'Guest',
+                  phone: bookingData.phone || '—',
                   age: bookingData.age || null,
                   gender: bookingData.gender || 'Male',
-                  aadhar_number: bookingData.aadhar_number,
-                  address: bookingData.address,
+                  aadhar_number: bookingData.aadhar_number || '',
+                  address: bookingData.address || '',
                 },
                 check_in: bookingData.check_in || new Date().toISOString(),
                 rate_per_day: dailyRate,
@@ -377,6 +377,9 @@ export function ResidencyProvider({ children }) {
       broadcastUniversalChange();
       return updated;
     });
+
+    // In background, refresh from server to ensure database sync
+    fetchFloors().catch(() => {});
   }
 
   // Mark room available on checkout (Local optimistic + universal broadcast)
