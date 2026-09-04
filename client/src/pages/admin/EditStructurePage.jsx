@@ -13,7 +13,7 @@ const ROOM_CATEGORIES_PRESETS = [
 ];
 
 export default function EditStructurePage() {
-  const { floors, addFloor, deleteFloor, addRoom, deleteRoom, resetAllResidencyData } = useResidency();
+  const { floors, addFloor, deleteFloor, addRoom, updateRoom, deleteRoom, resetAllResidencyData } = useResidency();
 
   // Modal States
   const [showAddFloorModal, setShowAddFloorModal] = useState(false);
@@ -26,6 +26,12 @@ export default function EditStructurePage() {
   const [customCategoryName, setCustomCategoryName] = useState('AC Single');
   const [customPrice, setCustomPrice] = useState('1500');
 
+  // Edit Room Modal State
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [editRoomNumber, setEditRoomNumber] = useState('');
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+
   // Handle Create Floor
   async function handleCreateFloor(e) {
     e.preventDefault();
@@ -37,7 +43,7 @@ export default function EditStructurePage() {
       setNewFloorNumber('');
       setShowAddFloorModal(false);
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Failed to create floor');
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create floor');
     }
   }
 
@@ -48,7 +54,7 @@ export default function EditStructurePage() {
         await deleteFloor(floor.id);
         toast.success(`${floor.floor_name} removed.`);
       } catch (err) {
-        toast.error(err.response?.data?.error || err.message || 'Failed to delete floor');
+        toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to delete floor');
       }
     }
   }
@@ -84,7 +90,34 @@ export default function EditStructurePage() {
       toast.success(`Room ${newRoomNumber} (${customCategoryName}) added to ${targetFloor?.floor_name || 'Floor'}! 🏨`);
       setShowAddRoomModal(false);
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Failed to create room');
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create room');
+    }
+  }
+
+  // Open Edit Room Modal
+  function openEditRoom(room, floorId) {
+    setEditingRoom({ ...room, floorId });
+    setEditRoomNumber(room.room_number || '');
+    setEditCategoryName(room.room_categories?.name || 'AC Single');
+    setEditPrice(String(room.room_categories?.base_price || '1500'));
+  }
+
+  // Handle Save Edit Room
+  async function handleSaveEditRoom(e) {
+    e.preventDefault();
+    if (!editingRoom) return;
+    if (!editRoomNumber) return toast.error('Room number is required');
+
+    try {
+      await updateRoom(editingRoom.id, {
+        room_number: editRoomNumber.trim(),
+        category_name: editCategoryName.trim(),
+        base_price: parseFloat(editPrice) || 1500,
+      });
+      toast.success(`Room ${editRoomNumber} updated successfully! ✨`);
+      setEditingRoom(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to update room');
     }
   }
 
@@ -95,7 +128,7 @@ export default function EditStructurePage() {
         await deleteRoom(floorId, room.id);
         toast.success(`Room ${room.room_number} deleted.`);
       } catch (err) {
-        toast.error(err.response?.data?.error || err.message || 'Failed to delete room');
+        toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to delete room');
       }
     }
   }
@@ -246,15 +279,26 @@ export default function EditStructurePage() {
                             </span>
                           </div>
 
-                          {/* Delete Room Action */}
-                          <div className="flex justify-end pt-space-xxs">
+                          {/* Room Actions: Edit & Delete */}
+                          <div className="flex items-center justify-between pt-space-xxs border-t border-surface-container-high/40">
+                            <button
+                              onClick={() => openEditRoom(room, floor.id)}
+                              className="text-xs text-secondary hover:underline flex items-center gap-0.5 cursor-pointer font-medium"
+                              type="button"
+                              title="Edit Room Number or Tariff"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">edit</span>
+                              <span>Edit</span>
+                            </button>
+
                             <button
                               onClick={() => handleDeleteRoom(floor.id, room)}
-                              className="text-xs text-error hover:underline flex items-center gap-0.5 cursor-pointer"
+                              className="text-xs text-error hover:underline flex items-center gap-0.5 cursor-pointer font-medium"
                               type="button"
+                              title="Delete Room"
                             >
                               <span className="material-symbols-outlined text-[14px]">delete</span>
-                              <span>Delete Room</span>
+                              <span>Delete</span>
                             </button>
                           </div>
                         </div>
@@ -405,6 +449,95 @@ export default function EditStructurePage() {
                 className="px-space-xl py-space-sm rounded-lg bg-secondary text-on-secondary font-label-lg hover:bg-on-secondary-container transition-colors font-bold cursor-pointer"
               >
                 Add Room Unit
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 3: Edit Existing Room */}
+      {editingRoom && (
+        <Modal
+          isOpen={Boolean(editingRoom)}
+          onClose={() => setEditingRoom(null)}
+          title={`Edit Room ${editingRoom.room_number}`}
+          subtitle="Update room number, category slab, and 24-hour tariff"
+          size="md"
+        >
+          <form onSubmit={handleSaveEditRoom} className="flex flex-col gap-space-md">
+            <div className="flex flex-col gap-space-xxs">
+              <label className="font-label-md text-label-md text-on-surface font-medium">
+                Room Number <span className="text-error">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={editRoomNumber}
+                onChange={(e) => setEditRoomNumber(e.target.value)}
+                placeholder="e.g. 101"
+                className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high/60 font-bold"
+              />
+            </div>
+
+            <div className="flex flex-col gap-space-xxs">
+              <label className="font-label-md text-label-md text-on-surface font-medium">
+                Room Category Name <span className="text-error">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={editCategoryName}
+                onChange={(e) => setEditCategoryName(e.target.value)}
+                placeholder="e.g. AC Single, Deluxe Suite"
+                className="w-full px-space-md py-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none border border-surface-container-high/60 font-semibold"
+              />
+              <div className="flex flex-wrap gap-1 mt-1">
+                <span className="text-[11px] text-on-surface-variant font-medium">Quick Suggestions:</span>
+                {['AC', 'Non-AC', 'AC Single', 'AC Double', 'Non-AC Single', 'Deluxe Suite'].map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setEditCategoryName(name)}
+                    className="px-2 py-0.5 rounded text-[11px] bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-container-high/60 cursor-pointer"
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-space-xxs">
+              <label className="font-label-md text-label-md text-on-surface font-medium">
+                24-Hour Tariff Rate (₹)
+              </label>
+              <div className="flex rounded-lg overflow-hidden border border-surface-container-high/60 bg-surface-container-low">
+                <span className="px-space-md py-space-sm bg-surface-container text-on-surface-variant font-bold flex items-center justify-center">
+                  ₹
+                </span>
+                <input
+                  type="number"
+                  required
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  placeholder="1500"
+                  className="w-full px-space-md py-space-sm bg-surface-container-low text-on-surface font-tabular-numeric text-tabular-numeric font-bold focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high/60">
+              <button
+                type="button"
+                onClick={() => setEditingRoom(null)}
+                className="px-space-lg py-space-sm rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-lg transition-colors border border-surface-container-high/60 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-space-xl py-space-sm rounded-lg bg-secondary text-on-secondary font-label-lg hover:bg-on-secondary-container transition-colors font-bold cursor-pointer"
+              >
+                Save Changes
               </button>
             </div>
           </form>

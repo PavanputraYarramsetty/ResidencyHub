@@ -53,9 +53,9 @@ async function updateFloor(req, res, next) {
   } catch (err) {
     logger.error('Failed to update floor', err);
     if (err.statusCode === 404) {
-      return res.status(404).json({ error: 'Floor not found' });
+      return res.status(404).json({ error: 'Floor not found', message: 'Floor not found' });
     }
-    res.status(err.statusCode || 500).json({ error: 'Failed to update floor' });
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to update floor', message: err.message });
   }
 }
 
@@ -69,7 +69,7 @@ async function deleteFloor(req, res, next) {
     res.json(result);
   } catch (err) {
     logger.error('Failed to delete floor', err);
-    res.status(err.statusCode || 500).json({ error: 'Failed to delete floor' });
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to delete floor', message: err.message });
   }
 }
 

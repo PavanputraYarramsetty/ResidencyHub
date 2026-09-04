@@ -214,12 +214,41 @@ export function ResidencyProvider({ children }) {
   async function deleteFloor(floorId) {
     setLoading(true);
     try {
-      const { data } = await api.delete(`/floors/${floorId}`);
+      let data = null;
+      try {
+        const res = await api.delete(`/floors/${floorId}`);
+        data = res.data;
+      } catch (err) {
+        console.warn('Backend delete floor notice:', err.response?.data || err.message);
+        if (err.response?.status !== 404 && !String(floorId).startsWith('floor-')) {
+          throw err;
+        }
+      }
+
+      setFloors((prevFloors) => {
+        const updated = prevFloors.filter((f) => f.id !== floorId);
+        localStorage.setItem('residency_floors', JSON.stringify(updated));
+        return updated;
+      });
+
+      await fetchFloors();
+      broadcastUniversalChange();
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Structural Management — Update Floor
+  async function updateFloor(floorId, updates) {
+    setLoading(true);
+    try {
+      const { data } = await api.put(`/floors/${floorId}`, updates);
       await fetchFloors();
       broadcastUniversalChange();
       return data;
     } catch (err) {
-      console.error('Failed to delete floor on server:', err);
+      console.error('Failed to update floor on server:', err);
       throw err;
     } finally {
       setLoading(false);
@@ -236,7 +265,7 @@ export function ResidencyProvider({ children }) {
 
       const { data } = await api.post('/rooms', {
         floor_id: floorId,
-        room_number: String(roomData.room_number),
+        room_number: String(roomData.room_number).trim(),
         category_name: categoryName,
         base_price: basePrice,
         category_id: categoryId,
@@ -257,17 +286,52 @@ export function ResidencyProvider({ children }) {
     }
   }
 
-  // Structural Management — Delete Room (Universal Server-First Persistence)
-  async function deleteRoom(floorId, roomId) {
+  // Structural Management — Update Room
+  async function updateRoom(roomId, updates) {
     setLoading(true);
     try {
-      const { data } = await api.delete(`/rooms/${roomId}`);
+      const { data } = await api.put(`/rooms/${roomId}`, updates);
       await fetchFloors();
       broadcastUniversalChange();
       return data;
     } catch (err) {
-      console.error('Failed to delete room on server:', err);
+      console.error('Failed to update room on server:', err);
       throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Structural Management — Delete Room (Universal Server-First Persistence)
+  async function deleteRoom(floorId, roomId) {
+    setLoading(true);
+    try {
+      let data = null;
+      try {
+        const res = await api.delete(`/rooms/${roomId}`);
+        data = res.data;
+      } catch (err) {
+        console.warn('Backend delete room notice:', err.response?.data || err.message);
+        if (err.response?.status !== 404 && !String(roomId).startsWith('r-')) {
+          throw err;
+        }
+      }
+
+      // Optimistically remove from local state immediately
+      setFloors((prevFloors) => {
+        const updated = prevFloors.map((floor) => ({
+          ...floor,
+          rooms: (floor.rooms || []).filter(
+            (r) => r.id !== roomId && String(r.room_number) !== String(roomId) && `r-${r.room_number}` !== String(roomId)
+          ),
+        }));
+        localStorage.setItem('residency_floors', JSON.stringify(updated));
+        return updated;
+      });
+
+      await fetchFloors();
+      broadcastUniversalChange();
+      return data;
     } finally {
       setLoading(false);
     }
@@ -374,8 +438,10 @@ export function ResidencyProvider({ children }) {
     markRoomOccupied,
     markRoomAvailable,
     addFloor,
+    updateFloor,
     deleteFloor,
     addRoom,
+    updateRoom,
     deleteRoom,
     resetAllResidencyData,
   };

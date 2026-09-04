@@ -62,7 +62,7 @@ async function createRoom(req, res, next) {
 async function updateRoom(req, res, next) {
   try {
     const { id } = req.params;
-    const { room_number, category_id, floor_id, status } = req.body;
+    const { room_number, category_id, floor_id, status, category_name, base_price } = req.body;
     const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
 
     const data = await roomService.updateRoom({
@@ -71,16 +71,18 @@ async function updateRoom(req, res, next) {
       room_number,
       category_id,
       floor_id,
-      status
+      status,
+      category_name,
+      base_price
     });
 
     res.json(data);
   } catch (err) {
     logger.error('Failed to update room', err);
     if (err.statusCode === 404) {
-      return res.status(404).json({ error: 'Room not found' });
+      return res.status(404).json({ error: 'Room not found', message: 'Room not found' });
     }
-    res.status(err.statusCode || 500).json({ error: 'Failed to update room' });
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to update room', message: err.message });
   }
 }
 
@@ -94,7 +96,7 @@ async function deleteRoom(req, res, next) {
     res.json(result);
   } catch (err) {
     logger.error('Failed to delete room', err);
-    res.status(err.statusCode || 500).json({ error: 'Failed to delete room' });
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to delete room', message: err.message });
   }
 }
 

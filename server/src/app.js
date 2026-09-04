@@ -36,6 +36,10 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/floors', floorRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/categories', (req, res, next) => {
+  req.url = '/categories' + (req.url === '/' ? '' : req.url);
+  roomRoutes(req, res, next);
+});
 app.use('/api/customers', customerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/revenue', revenueRoutes);

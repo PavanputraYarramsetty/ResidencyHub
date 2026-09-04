@@ -44,7 +44,7 @@ export default function ManageRooms() {
       toast.success(`Room ${roomNumber} added successfully! 🏨`);
       setRoomNumber('');
     } catch (err) {
-      toast.error('Failed to add room');
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to add room');
     } finally {
       setSubmitting(false);
     }
@@ -56,7 +56,7 @@ export default function ManageRooms() {
 
     try {
       setSubmitting(true);
-      await api.post('/categories', {
+      await api.post('/rooms/categories', {
         name: catName,
         base_price: parseFloat(catPrice),
         max_occupancy: parseInt(catMax, 10) || 2,
@@ -66,7 +66,7 @@ export default function ManageRooms() {
       setCatPrice('');
       refreshData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to create category');
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create category');
     } finally {
       setSubmitting(false);
     }

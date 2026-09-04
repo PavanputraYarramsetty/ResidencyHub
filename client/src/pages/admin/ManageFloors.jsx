@@ -20,7 +20,7 @@ export default function ManageFloors() {
       setFloorName('');
       setFloorNumber('');
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Failed to create floor');
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create floor');
     } finally {
       setSubmitting(false);
     }
