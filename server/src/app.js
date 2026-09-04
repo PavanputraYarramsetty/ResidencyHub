@@ -29,9 +29,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({ status: 'ok', service: 'Sridevi Residency API', timestamp: new Date().toISOString() });
 });
+
 
 // API Routes
 app.use('/api/floors', floorRoutes);

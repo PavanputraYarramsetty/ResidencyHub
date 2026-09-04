@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../config/supabase');
+const { bookings, rooms, customers, categories, floors, generateUuid } = require('./datastore');
 const { computeCheckoutBilling } = require('./billing.service');
 const { logger } = require('../utils/logger');
 const {
@@ -17,51 +17,61 @@ class BookingService {
   async getBookings({ status, room_id, customer_id, from_date, to_date, page = 1, limit = 50 }) {
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 50;
+
+    let filtered = [...bookings];
+    if (status) filtered = filtered.filter((b) => b.status === status);
+    if (room_id) filtered = filtered.filter((b) => b.room_id === room_id);
+    if (customer_id) filtered = filtered.filter((b) => b.customer_id === customer_id);
+    if (from_date) filtered = filtered.filter((b) => (b.booking_date || b.check_in) >= from_date);
+    if (to_date) filtered = filtered.filter((b) => (b.booking_date || b.check_in) <= to_date);
+
+    filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const total = filtered.length;
     const offset = (pageNum - 1) * limitNum;
+    const paginated = filtered.slice(offset, offset + limitNum);
 
-    let query = supabaseAdmin
-      .from('bookings')
-      .select(`
-        *,
-        customers (id, full_name, phone),
-        rooms (id, room_number, floor_id,
-          room_categories (name),
-          floors (floor_name, floor_number)
-        )
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limitNum - 1);
+    const enriched = paginated.map((b) => {
+      const cust = customers.find((c) => c.id === b.customer_id) || b.customers || { full_name: 'Guest', phone: '—' };
+      const rm = rooms.find((r) => r.id === b.room_id) || { room_number: '—' };
+      const cat = categories.find((c) => c.id === rm.category_id) || { name: 'Standard' };
+      const flr = floors.find((f) => f.id === rm.floor_id) || { floor_name: 'Ground Floor', floor_number: 0 };
 
-    if (status) query = query.eq('status', status);
-    if (room_id) query = query.eq('room_id', room_id);
-    if (customer_id) query = query.eq('customer_id', customer_id);
-    if (from_date) query = query.gte('booking_date', from_date);
-    if (to_date) query = query.lte('booking_date', to_date);
+      return {
+        ...b,
+        customers: cust,
+        rooms: {
+          ...rm,
+          room_categories: cat,
+          floors: flr,
+        },
+      };
+    });
 
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    return { bookings: data, total: count, page: pageNum, limit: limitNum };
+    return { bookings: enriched, total, page: pageNum, limit: limitNum };
   }
 
   /**
    * Get single booking by ID with customer, room, and floor relations
    */
   async getBooking(id) {
-    const { data, error } = await supabaseAdmin
-      .from('bookings')
-      .select(`
-        *,
-        customers (*),
-        rooms (*, room_categories (*), floors (*))
-      `)
-      .eq('id', id)
-      .single();
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) throw new NotFoundError('Booking not found');
 
-    if (error) throw error;
-    if (!data) throw new NotFoundError('Booking not found');
+    const cust = customers.find((c) => c.id === booking.customer_id) || booking.customers || null;
+    const rm = rooms.find((r) => r.id === booking.room_id) || { room_number: '—' };
+    const cat = categories.find((c) => c.id === rm.category_id) || null;
+    const flr = floors.find((f) => f.id === rm.floor_id) || null;
 
-    return data;
+    return {
+      ...booking,
+      customers: cust,
+      rooms: {
+        ...rm,
+        room_categories: cat,
+        floors: flr,
+      },
+    };
   }
 
   /**
@@ -93,50 +103,35 @@ class BookingService {
 
     let resolvedCustomerId = customer_id;
 
-    // If customer details passed directly, find or create customer
     if (!resolvedCustomerId && (phone || full_name)) {
-      const { data: existing } = await supabaseAdmin
-        .from('customers')
-        .select('id')
-        .eq('residency_id', residencyId)
-        .eq('phone', phone || '')
-        .maybeSingle();
-
-      if (existing) {
-        resolvedCustomerId = existing.id;
+      let existingCust = customers.find((c) => phone && c.phone === phone);
+      if (existingCust) {
+        resolvedCustomerId = existingCust.id;
       } else {
-        const { data: newCust, error: custErr } = await supabaseAdmin
-          .from('customers')
-          .insert({
-            residency_id: residencyId,
-            full_name: full_name || 'Guest',
-            phone: phone || '',
-            aadhar_number: aadhar_number || '',
-            age: age || null,
-            gender: gender || 'Male',
-            address: address || ''
-          })
-          .select('id')
-          .single();
-
-        if (custErr) throw custErr;
+        const newCust = {
+          id: generateUuid(),
+          residency_id: residencyId,
+          full_name: full_name || 'Guest',
+          phone: phone || '',
+          aadhar_number: aadhar_number || '',
+          age: age || null,
+          gender: gender || 'Male',
+          address: address || '',
+          created_at: new Date().toISOString(),
+        };
+        customers.push(newCust);
         resolvedCustomerId = newCust.id;
       }
     }
 
-    // Check if room exists and get details
-    const { data: room } = await supabaseAdmin
-      .from('rooms')
-      .select('*, room_categories(base_price)')
-      .eq('id', room_id)
-      .single();
-
+    const room = rooms.find((r) => r.id === room_id || r.room_number === String(room_id).replace(/^r-/, ''));
     if (!room) throw new NotFoundError('Room not found');
     if (room.status !== 'available') {
       throw new ConflictError('Room is not available for booking');
     }
 
-    const effectiveRate = rate_per_day || room.room_categories?.base_price || 1000;
+    const cat = categories.find((c) => c.id === room.category_id) || { base_price: 1000, name: 'Standard' };
+    const effectiveRate = Number(rate_per_day || cat.base_price || 1000);
     const effectiveDays = Number(no_of_days || 1);
     const effectiveAdvance = Number(advance_amount || 0);
     const effectiveTotal = Number(total_amount || (effectiveRate * effectiveDays));
@@ -144,57 +139,46 @@ class BookingService {
     const effectiveCheckIn = check_in || new Date().toISOString();
     const effectivePaymentMode = payment_mode || 'UPI';
 
-    // Safely check if userId exists in profiles to satisfy foreign key constraint
-    let validUserId = null;
-    if (userId) {
-      const { data: userProf } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-      if (userProf) validUserId = userProf.id;
-    }
+    const newBooking = {
+      id: generateUuid(),
+      residency_id: residencyId,
+      room_id: room.id,
+      customer_id: resolvedCustomerId,
+      no_of_persons: no_of_persons || 1,
+      no_of_days: effectiveDays,
+      booking_date: effectiveDate,
+      check_in: effectiveCheckIn,
+      rate_per_day: effectiveRate,
+      advance_amount: effectiveAdvance,
+      total_amount: effectiveTotal,
+      payment_mode: effectivePaymentMode,
+      status: 'checked_in',
+      created_by: userId || null,
+      created_at: new Date().toISOString(),
+    };
 
-    // Create booking and immediately check-in
-    const { data: booking, error } = await supabaseAdmin
-      .from('bookings')
-      .insert({
-        room_id,
-        customer_id: resolvedCustomerId,
-        no_of_persons: no_of_persons || 1,
-        no_of_days: effectiveDays,
-        booking_date: effectiveDate,
-        check_in: effectiveCheckIn,
-        rate_per_day: effectiveRate,
-        advance_amount: effectiveAdvance,
-        total_amount: effectiveTotal,
-        payment_mode: effectivePaymentMode,
-        status: 'checked_in',
-        created_by: validUserId
-      })
-      .select(`
-        *,
-        customers (id, full_name, phone),
-        rooms (id, room_number, room_categories (name))
-      `)
-      .single();
+    bookings.push(newBooking);
 
-    if (error) throw error;
+    // Update room status to occupied
+    room.status = 'occupied';
 
-    // Update room status to occupied (red)
-    await supabaseAdmin
-      .from('rooms')
-      .update({ status: 'occupied' })
-      .eq('id', room_id);
+    const cust = customers.find((c) => c.id === resolvedCustomerId) || null;
 
-    logger.success(`Booking created for room ${booking.rooms?.room_number || room.room_number}`);
+    logger.success(`Booking created for room ${room.room_number}`);
     await invalidateBookingsCache(residencyId);
 
     if (!customer_id && (phone || full_name)) {
       await invalidateCustomerSearchCache(residencyId);
     }
 
-    return booking;
+    return {
+      ...newBooking,
+      customers: cust,
+      rooms: {
+        ...room,
+        room_categories: cat,
+      },
+    };
   }
 
   /**
@@ -203,12 +187,7 @@ class BookingService {
   async recordCheckIn({ id, checkInTime, residencyId }) {
     const resolvedCheckIn = checkInTime || new Date().toISOString();
 
-    const { data: booking } = await supabaseAdmin
-      .from('bookings')
-      .select('*')
-      .eq('id', id)
-      .single();
-
+    const booking = bookings.find((b) => b.id === id);
     if (!booking) throw new NotFoundError('Booking not found');
     if (booking.status === 'checked_out') {
       throw new BadRequestError('Booking is already checked out');
@@ -217,32 +196,23 @@ class BookingService {
       throw new BadRequestError('Booking is cancelled');
     }
 
-    const { data: updated, error } = await supabaseAdmin
-      .from('bookings')
-      .update({
-        check_in: resolvedCheckIn,
-        status: 'checked_in'
-      })
-      .eq('id', id)
-      .select(`
-        *,
-        customers (id, full_name, phone),
-        rooms (id, room_number, room_categories (name))
-      `)
-      .single();
+    booking.check_in = resolvedCheckIn;
+    booking.status = 'checked_in';
 
-    if (error) throw error;
+    const room = rooms.find((r) => r.id === booking.room_id);
+    if (room) room.status = 'occupied';
 
-    // Update room status to occupied (red)
-    await supabaseAdmin
-      .from('rooms')
-      .update({ status: 'occupied' })
-      .eq('id', booking.room_id);
+    const cust = customers.find((c) => c.id === booking.customer_id) || null;
+    const cat = room ? categories.find((c) => c.id === room.category_id) : null;
 
     await invalidateBookingsCache(residencyId);
     logger.success(`Check-in recorded for booking ${id}`);
 
-    return updated;
+    return {
+      ...booking,
+      customers: cust,
+      rooms: room ? { ...room, room_categories: cat } : null,
+    };
   }
 
   /**
@@ -259,12 +229,7 @@ class BookingService {
   }) {
     const resolvedCheckOut = checkOutTime || new Date().toISOString();
 
-    const { data: booking } = await supabaseAdmin
-      .from('bookings')
-      .select('*')
-      .eq('id', id)
-      .single();
-
+    const booking = bookings.find((b) => b.id === id);
     if (!booking) throw new NotFoundError('Booking not found');
     if (booking.status === 'checked_out') {
       throw new BadRequestError('Booking is already checked out');
@@ -273,47 +238,35 @@ class BookingService {
       throw new BadRequestError('Cannot check out before checking in');
     }
 
-    // SERVER-SIDE BILLING — source of truth (24-hour slab rule)
     const { billableDays, totalAmount, durationHours } = computeCheckoutBilling(
       booking.check_in,
       resolvedCheckOut,
       booking.rate_per_day
     );
 
-    const { data: updated, error } = await supabaseAdmin
-      .from('bookings')
-      .update({
-        check_out: resolvedCheckOut,
-        billable_days: billableDays,
-        total_amount: net_total !== undefined ? net_total : totalAmount,
-        discount_percent: discount_percent || 0,
-        discount_amount: discount_amount || 0,
-        payment_mode: payment_mode || 'UPI',
-        status: 'checked_out'
-      })
-      .eq('id', id)
-      .select(`
-        *,
-        customers (id, full_name, phone),
-        rooms (id, room_number, room_categories (name))
-      `)
-      .single();
+    booking.check_out = resolvedCheckOut;
+    booking.billable_days = billableDays;
+    booking.total_amount = net_total !== undefined ? net_total : totalAmount;
+    booking.discount_percent = discount_percent || 0;
+    booking.discount_amount = discount_amount || 0;
+    booking.payment_mode = payment_mode || 'UPI';
+    booking.status = 'checked_out';
 
-    if (error) throw error;
+    const room = rooms.find((r) => r.id === booking.room_id);
+    if (room) room.status = 'available';
 
-    // Room flips back to available (green)
-    await supabaseAdmin
-      .from('rooms')
-      .update({ status: 'available' })
-      .eq('id', booking.room_id);
+    const cust = customers.find((c) => c.id === booking.customer_id) || null;
+    const cat = room ? categories.find((c) => c.id === room.category_id) : null;
 
     await invalidateBookingsCache(residencyId);
 
-    logger.success(`Checkout completed — Room ${updated.rooms.room_number}: ${billableDays} day(s), ₹${totalAmount} (${durationHours}h stay)`);
+    logger.success(`Checkout completed — Room ${room?.room_number}: ${billableDays} day(s), ₹${totalAmount} (${durationHours}h stay)`);
 
     return {
-      ...updated,
-      billing: { billableDays, totalAmount, durationHours }
+      ...booking,
+      customers: cust,
+      rooms: room ? { ...room, room_categories: cat } : null,
+      billing: { billableDays, totalAmount, durationHours },
     };
   }
 
@@ -321,36 +274,21 @@ class BookingService {
    * Cancel an active or reserved booking
    */
   async cancelBooking({ id, residencyId }) {
-    const { data: booking } = await supabaseAdmin
-      .from('bookings')
-      .select('*')
-      .eq('id', id)
-      .single();
-
+    const booking = bookings.find((b) => b.id === id);
     if (!booking) throw new NotFoundError('Booking not found');
     if (booking.status === 'checked_out') {
       throw new BadRequestError('Cannot cancel a completed booking');
     }
 
-    const { data: updated, error } = await supabaseAdmin
-      .from('bookings')
-      .update({ status: 'cancelled' })
-      .eq('id', id)
-      .select()
-      .single();
+    booking.status = 'cancelled';
 
-    if (error) throw error;
-
-    // Release room back to available
-    await supabaseAdmin
-      .from('rooms')
-      .update({ status: 'available' })
-      .eq('id', booking.room_id);
+    const room = rooms.find((r) => r.id === booking.room_id);
+    if (room) room.status = 'available';
 
     await invalidateBookingsCache(residencyId);
     logger.success(`Booking ${id} cancelled`);
 
-    return updated;
+    return booking;
   }
 
   /**
@@ -359,7 +297,6 @@ class BookingService {
   async getTodayStats(residencyId) {
     const cacheKey = `residency:${residencyId}:dashboard:today_stats`;
 
-    // 1. Try Redis cache
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
@@ -370,30 +307,27 @@ class BookingService {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    const { data: todayCheckIns } = await supabaseAdmin
-      .from('bookings')
-      .select('id', { count: 'exact' })
-      .gte('check_in', startOfDay.toISOString())
-      .lte('check_in', endOfDay.toISOString());
+    const todayCheckIns = bookings.filter((b) => {
+      if (!b.check_in) return false;
+      const t = new Date(b.check_in).getTime();
+      return t >= startOfDay.getTime() && t <= endOfDay.getTime();
+    });
 
-    const { data: todayCheckOuts } = await supabaseAdmin
-      .from('bookings')
-      .select('id, total_amount', { count: 'exact' })
-      .gte('check_out', startOfDay.toISOString())
-      .lte('check_out', endOfDay.toISOString())
-      .eq('status', 'checked_out');
+    const todayCheckOuts = bookings.filter((b) => {
+      if (!b.check_out || b.status !== 'checked_out') return false;
+      const t = new Date(b.check_out).getTime();
+      return t >= startOfDay.getTime() && t <= endOfDay.getTime();
+    });
 
-    const todayRevenue = todayCheckOuts?.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0) || 0;
+    const todayRevenue = todayCheckOuts.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
 
     const result = {
-      today_check_ins: todayCheckIns?.length || 0,
-      today_check_outs: todayCheckOuts?.length || 0,
-      today_revenue: todayRevenue
+      today_check_ins: todayCheckIns.length,
+      today_check_outs: todayCheckOuts.length,
+      today_revenue: todayRevenue,
     };
 
-    // 2. Populate Redis cache
     await setCache(cacheKey, result, TTL.DASHBOARD_STATS);
-
     return result;
   }
 }

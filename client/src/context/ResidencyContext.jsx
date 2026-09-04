@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../services/api';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 const ResidencyContext = createContext(null);
 
@@ -20,7 +19,6 @@ const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChann
 
 export function ResidencyProvider({ children }) {
   const { isAuthenticated } = useAuth();
-  const universalChannelRef = useRef(null);
 
   // Load saved floors from localStorage as initial offline fallback
   const [floors, setFloors] = useState(() => {
@@ -59,27 +57,14 @@ export function ResidencyProvider({ children }) {
     }
   }, []);
 
-  // Universal multi-device broadcast dispatch
+  // Cross-tab broadcast dispatch
   const broadcastUniversalChange = useCallback(() => {
-    // 1. Same-device cross-tab sync
+    // Same-device cross-tab sync
     localStorage.setItem('residency_last_sync', Date.now().toString());
     window.dispatchEvent(new Event('residency_updated'));
     if (syncChannel) {
       try {
         syncChannel.postMessage({ type: 'RESIDENCY_STRUCTURE_UPDATED', timestamp: Date.now() });
-      } catch (e) {
-        /* ignore */
-      }
-    }
-
-    // 2. Multi-device worldwide sync via Supabase Realtime WebSocket
-    if (universalChannelRef.current) {
-      try {
-        universalChannelRef.current.send({
-          type: 'broadcast',
-          event: 'RESIDENCY_STRUCTURE_UPDATED',
-          payload: { timestamp: Date.now() },
-        });
       } catch (e) {
         /* ignore */
       }
@@ -101,7 +86,7 @@ export function ResidencyProvider({ children }) {
 
   // Realtime & Cross-Device Sync Listeners
   useEffect(() => {
-    // 1. Local Cross-Tab Broadcast Channel (Same browser instance)
+    // Local Cross-Tab Broadcast Channel (Same browser instance)
     if (syncChannel) {
       const handleBroadcast = (event) => {
         if (event.data?.type === 'RESIDENCY_STRUCTURE_UPDATED') {
@@ -114,42 +99,6 @@ export function ResidencyProvider({ children }) {
     }
   }, [fetchFloors, fetchCategories]);
 
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
-    // 2. Global Universal Sync Channel (Multi-Device Worldwide WebSockets)
-    const universalChannel = supabase.channel('residency-universal-sync');
-
-    universalChannel
-      .on('broadcast', { event: 'RESIDENCY_STRUCTURE_UPDATED' }, () => {
-        console.log('🔄 Universal Realtime Sync: received structure update broadcast from another device');
-        fetchFloors();
-        fetchCategories();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'floors' }, () => {
-        fetchFloors();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
-        fetchFloors();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_categories' }, () => {
-        fetchFloors();
-        fetchCategories();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        fetchFloors();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          universalChannelRef.current = universalChannel;
-        }
-      });
-
-    return () => {
-      universalChannelRef.current = null;
-      supabase.removeChannel(universalChannel);
-    };
-  }, [fetchFloors, fetchCategories]);
 
   // 3. Multi-Device Polling & Window Focus Sync (Guarantees fresh sync across all screens)
   useEffect(() => {

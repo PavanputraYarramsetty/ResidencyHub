@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../config/supabase');
+const { bookings, rooms, floors, categories } = require('./datastore');
 const { getCache, setCache, TTL } = require('./cache.service');
 
 class RevenueService {
@@ -8,44 +8,58 @@ class RevenueService {
   async getRevenueSummary({ residencyId, from_date, to_date, floor_id, category_id, period }) {
     const cacheKey = `residency:${residencyId}:revenue:${from_date || ''}:${to_date || ''}:${floor_id || ''}:${category_id || ''}:${period || ''}`;
 
-    // 1. Try Redis cache
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
     }
 
-    // Query completed bookings directly for flexible filtering
-    let query = supabaseAdmin
-      .from('bookings')
-      .select(`
-        id, check_out, total_amount, billable_days, rate_per_day,
-        rooms!inner (
-          id, room_number, floor_id, category_id,
-          room_categories (id, name),
-          floors!inner (id, floor_name, floor_number, residency_id)
-        )
-      `)
-      .eq('status', 'checked_out')
-      .eq('rooms.floors.residency_id', residencyId)
-      .not('total_amount', 'is', null)
-      .order('check_out', { ascending: false });
+    const categoriesMap = {};
+    categories.forEach((c) => { categoriesMap[c.id] = c; });
 
-    if (from_date) query = query.gte('check_out', `${from_date}T00:00:00`);
-    if (to_date) query = query.lte('check_out', `${to_date}T23:59:59`);
-    if (floor_id) query = query.eq('rooms.floor_id', floor_id);
-    if (category_id) query = query.eq('rooms.category_id', category_id);
+    const floorsMap = {};
+    floors.forEach((f) => { floorsMap[f.id] = f; });
 
-    const { data, error } = await query;
-    if (error) throw error;
+    let completedBookings = bookings.filter((b) => b.status === 'checked_out');
 
-    // Compute aggregations
-    const totalRevenue = (data || []).reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
-    const totalBookings = (data || []).length;
+    if (from_date) {
+      completedBookings = completedBookings.filter((b) => b.check_out && b.check_out.split('T')[0] >= from_date);
+    }
+    if (to_date) {
+      completedBookings = completedBookings.filter((b) => b.check_out && b.check_out.split('T')[0] <= to_date);
+    }
 
-    // Group by date for charts
+    const enriched = completedBookings
+      .map((b) => {
+        const rm = rooms.find((r) => r.id === b.room_id) || { room_number: '—' };
+        const cat = categoriesMap[rm.category_id] || { id: rm.category_id, name: 'Standard' };
+        const flr = floorsMap[rm.floor_id] || { id: rm.floor_id, floor_name: 'Ground Floor', floor_number: 0 };
+
+        return {
+          id: b.id,
+          check_out: b.check_out,
+          total_amount: b.total_amount,
+          billable_days: b.billable_days,
+          rate_per_day: b.rate_per_day,
+          rooms: {
+            ...rm,
+            room_categories: cat,
+            floors: flr,
+          },
+        };
+      })
+      .filter((b) => {
+        if (floor_id && b.rooms?.floor_id !== floor_id) return false;
+        if (category_id && b.rooms?.category_id !== category_id) return false;
+        return true;
+      });
+
+    const totalRevenue = enriched.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
+    const totalBookings = enriched.length;
+
+    // Group by date
     const byDate = {};
-    (data || []).forEach(b => {
-      const date = b.check_out?.split('T')[0];
+    enriched.forEach((b) => {
+      const date = b.check_out?.split('T')[0] || new Date().toISOString().split('T')[0];
       if (!byDate[date]) byDate[date] = { date, revenue: 0, bookings: 0 };
       byDate[date].revenue += parseFloat(b.total_amount) || 0;
       byDate[date].bookings += 1;
@@ -53,7 +67,7 @@ class RevenueService {
 
     // Group by floor
     const byFloor = {};
-    (data || []).forEach(b => {
+    enriched.forEach((b) => {
       const floorName = b.rooms?.floors?.floor_name || 'Unknown';
       if (!byFloor[floorName]) byFloor[floorName] = { floor: floorName, revenue: 0, bookings: 0 };
       byFloor[floorName].revenue += parseFloat(b.total_amount) || 0;
@@ -62,7 +76,7 @@ class RevenueService {
 
     // Group by category
     const byCategory = {};
-    (data || []).forEach(b => {
+    enriched.forEach((b) => {
       const catName = b.rooms?.room_categories?.name || 'Unknown';
       if (!byCategory[catName]) byCategory[catName] = { category: catName, revenue: 0, bookings: 0 };
       byCategory[catName].revenue += parseFloat(b.total_amount) || 0;
@@ -75,12 +89,10 @@ class RevenueService {
       by_date: Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date)),
       by_floor: Object.values(byFloor),
       by_category: Object.values(byCategory),
-      bookings: data || []
+      bookings: enriched,
     };
 
-    // 2. Populate Redis cache
     await setCache(cacheKey, result, TTL.REVENUE);
-
     return result;
   }
 }

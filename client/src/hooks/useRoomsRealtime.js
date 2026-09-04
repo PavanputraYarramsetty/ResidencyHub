@@ -1,10 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
 import api from '../services/api';
 
 /**
- * Real-time room status subscription
- * Listens to rooms + bookings table changes via Supabase Realtime
+ * Hook for fetching and managing rooms with auto-polling
  */
 export function useRoomsRealtime(floorId) {
   const [rooms, setRooms] = useState([]);
@@ -25,39 +23,6 @@ export function useRoomsRealtime(floorId) {
 
   useEffect(() => {
     fetchRooms();
-  }, [fetchRooms]);
-
-  // Subscribe to real-time changes on rooms table
-  useEffect(() => {
-    const channel = supabase
-      .channel('room-status-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'rooms',
-      }, (payload) => {
-        setRooms(prev => {
-          const updated = [...prev];
-          const idx = updated.findIndex(r => r.id === payload.new?.id);
-          if (idx >= 0 && payload.new) {
-            updated[idx] = { ...updated[idx], ...payload.new };
-          }
-          return updated;
-        });
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings',
-      }, () => {
-        // Refetch rooms when any booking changes (to update status)
-        fetchRooms();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchRooms]);
 
   return { rooms, loading, refetch: fetchRooms };

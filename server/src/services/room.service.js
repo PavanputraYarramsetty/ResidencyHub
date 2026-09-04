@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../config/supabase');
+const { rooms, floors, categories, bookings, customers, generateUuid } = require('./datastore');
 const { logger } = require('../utils/logger');
 const { getCache, setCache, invalidateRoomsCache, invalidateCategoriesCache, TTL } = require('./cache.service');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
@@ -12,33 +12,37 @@ class RoomService {
   async getRooms({ residencyId, floorId }) {
     const cacheKey = `residency:${residencyId}:rooms:${floorId || 'all'}`;
 
-    // 1. Try Redis cache
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
     }
 
-    let query = supabaseAdmin
-      .from('rooms')
-      .select(`
-        *,
-        room_categories (id, name, base_price, max_occupancy),
-        floors!inner (id, floor_number, floor_name, residency_id)
-      `)
-      .eq('floors.residency_id', residencyId)
-      .order('room_number', { ascending: true });
+    const categoriesMap = {};
+    categories.forEach((c) => { categoriesMap[c.id] = c; });
 
+    const floorsMap = {};
+    floors.forEach((f) => { floorsMap[f.id] = f; });
+
+    let filteredRooms = rooms.filter((r) => !r.residency_id || r.residency_id === residencyId);
     if (floorId) {
-      query = query.eq('floor_id', floorId);
+      filteredRooms = filteredRooms.filter((r) => r.floor_id === floorId || r.floor_id === `floor-${floorId}`);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    const enrichedRooms = filteredRooms
+      .map((r) => ({
+        ...r,
+        room_categories: categoriesMap[r.category_id] || { id: r.category_id, name: 'Standard', base_price: 1500, max_occupancy: 2 },
+        floors: floorsMap[r.floor_id] || { id: r.floor_id, floor_number: 0, floor_name: 'Ground Floor' },
+      }))
+      .sort((a, b) => {
+        const numA = parseInt(a.room_number, 10);
+        const numB = parseInt(b.room_number, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a.room_number).localeCompare(String(b.room_number));
+      });
 
-    // 2. Populate Redis cache
-    await setCache(cacheKey, data, TTL.ROOMS);
-
-    return data;
+    await setCache(cacheKey, enrichedRooms, TTL.ROOMS);
+    return enrichedRooms;
   }
 
   /**
@@ -47,48 +51,37 @@ class RoomService {
   async getRoom({ residencyId, id }) {
     const cacheKey = `residency:${residencyId}:room:${id}`;
 
-    // 1. Try Redis cache
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const { data: room, error } = await supabaseAdmin
-      .from('rooms')
-      .select(`
-        *,
-        room_categories (id, name, base_price, max_occupancy),
-        floors (id, floor_number, floor_name)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
+    const room = rooms.find((r) => r.id === id || r.room_number === String(id).replace(/^r-/, ''));
     if (!room) throw new NotFoundError('Room not found');
 
-    // Fetch active booking if room is occupied
+    const cat = categories.find((c) => c.id === room.category_id) || { id: room.category_id, name: 'Standard', base_price: 1500, max_occupancy: 2 };
+    const flr = floors.find((f) => f.id === room.floor_id) || { id: room.floor_id, floor_number: 0, floor_name: 'Ground Floor' };
+
     let activeBooking = null;
     if (room.status === 'occupied' || room.status === 'reserved') {
-      const { data: booking } = await supabaseAdmin
-        .from('bookings')
-        .select(`
-          *,
-          customers (*)
-        `)
-        .eq('room_id', id)
-        .in('status', ['booked', 'checked_in'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const b = bookings
+        .filter((bk) => bk.room_id === room.id && ['booked', 'checked_in'].includes(bk.status))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
-      activeBooking = booking;
+      if (b) {
+        const cust = customers.find((c) => c.id === b.customer_id) || b.customers || null;
+        activeBooking = { ...b, customers: cust };
+      }
     }
 
-    const result = { ...room, active_booking: activeBooking };
+    const result = {
+      ...room,
+      room_categories: cat,
+      floors: flr,
+      active_booking: activeBooking,
+    };
 
-    // 2. Populate Redis cache
     await setCache(cacheKey, result, TTL.ROOMS);
-
     return result;
   }
 
@@ -102,187 +95,75 @@ class RoomService {
 
     const trimmedRoomNum = String(room_number).trim();
 
-    // 1. Resolve Target Floor UUID (guaranteed to be an actual existing floor in DB)
-    let resolvedFloorId = null;
-
-    if (floor_id && UUID_REGEX.test(floor_id)) {
-      const { data: existingFloor } = await supabaseAdmin
-        .from('floors')
-        .select('id')
-        .eq('id', floor_id)
-        .eq('residency_id', residencyId)
-        .limit(1)
-        .maybeSingle();
-
-      if (existingFloor) {
-        resolvedFloorId = existingFloor.id;
-      }
-    }
-
-    // If not resolved, check if floor_id contains a floor index (e.g. 'floor-1', '1', 'Ground Floor')
-    if (!resolvedFloorId && floor_id) {
+    // 1. Resolve Target Floor
+    let targetFloor = floors.find((f) => f.id === floor_id);
+    if (!targetFloor && floor_id) {
       const parsedFloorNum = parseInt(String(floor_id).replace(/^floor-/, ''), 10);
       if (!isNaN(parsedFloorNum)) {
-        const { data: floorByNum } = await supabaseAdmin
-          .from('floors')
-          .select('id')
-          .eq('residency_id', residencyId)
-          .eq('floor_number', parsedFloorNum)
-          .limit(1)
-          .maybeSingle();
-
-        if (floorByNum) resolvedFloorId = floorByNum.id;
+        targetFloor = floors.find((f) => f.floor_number === parsedFloorNum);
       }
     }
-
-    // Fallback: pick the first available floor for this residency, or create Ground Floor
-    if (!resolvedFloorId) {
-      const { data: allFloors } = await supabaseAdmin
-        .from('floors')
-        .select('id, floor_number')
-        .eq('residency_id', residencyId)
-        .order('floor_number', { ascending: true });
-
-      if (allFloors && allFloors.length > 0) {
-        resolvedFloorId = allFloors[0].id;
-      } else {
-        const { data: newFloor, error: fErr } = await supabaseAdmin
-          .from('floors')
-          .insert({ residency_id: residencyId, floor_number: 0, floor_name: 'Ground Floor' })
-          .select()
-          .single();
-        if (fErr) throw fErr;
-        resolvedFloorId = newFloor.id;
-      }
+    if (!targetFloor) {
+      targetFloor = floors[0] || {
+        id: generateUuid(),
+        residency_id: residencyId,
+        floor_number: 0,
+        floor_name: 'Ground Floor',
+        created_at: new Date().toISOString(),
+      };
+      if (!floors.includes(targetFloor)) floors.push(targetFloor);
     }
 
-    // 2. Resolve Category UUID
-    let resolvedCatId = null;
+    // 2. Resolve Category
     const catName = (category_name || category?.name || (typeof category_id === 'string' && !UUID_REGEX.test(category_id) ? category_id : 'Standard')).trim();
     const catPrice = Number(base_price || category?.base_price || 1500);
 
-    if (category_id && UUID_REGEX.test(category_id)) {
-      const { data: existingCat } = await supabaseAdmin
-        .from('room_categories')
-        .select('id')
-        .eq('id', category_id)
-        .limit(1)
-        .maybeSingle();
-      if (existingCat) {
-        resolvedCatId = existingCat.id;
+    let targetCat = categories.find((c) => c.id === category_id);
+    if (!targetCat && catName) {
+      targetCat = categories.find((c) => c.name.toLowerCase() === catName.toLowerCase());
+      if (!targetCat) {
+        targetCat = {
+          id: generateUuid(),
+          residency_id: residencyId,
+          name: catName,
+          base_price: catPrice > 0 ? catPrice : 1500,
+          max_occupancy: 2,
+          created_at: new Date().toISOString(),
+        };
+        categories.push(targetCat);
       }
     }
+    if (!targetCat) targetCat = categories[0];
 
-    if (!resolvedCatId && catName) {
-      const { data: matchedCat } = await supabaseAdmin
-        .from('room_categories')
-        .select('id, name')
-        .eq('residency_id', residencyId)
-        .ilike('name', catName)
-        .limit(1)
-        .maybeSingle();
+    // 3. Check if room already exists
+    let existingRoom = rooms.find(
+      (r) => r.floor_id === targetFloor.id && r.room_number === trimmedRoomNum
+    );
 
-      if (matchedCat) {
-        resolvedCatId = matchedCat.id;
-      } else {
-        const { data: newCat, error: catErr } = await supabaseAdmin
-          .from('room_categories')
-          .insert({
-            residency_id: residencyId,
-            name: catName,
-            base_price: catPrice > 0 ? catPrice : 1500,
-            max_occupancy: 2
-          })
-          .select()
-          .single();
-
-        if (!catErr && newCat) {
-          resolvedCatId = newCat.id;
-        } else {
-          // Fallback if concurrent insert or conflict
-          const { data: fallbackCat } = await supabaseAdmin
-            .from('room_categories')
-            .select('id')
-            .eq('residency_id', residencyId)
-            .limit(1)
-            .maybeSingle();
-          if (fallbackCat) resolvedCatId = fallbackCat.id;
-        }
-      }
-    }
-
-    // 3. Check if room already exists on this floor
-    const { data: existingRoom } = await supabaseAdmin
-      .from('rooms')
-      .select('id')
-      .eq('floor_id', resolvedFloorId)
-      .eq('room_number', trimmedRoomNum)
-      .limit(1)
-      .maybeSingle();
-
-    let roomData;
     if (existingRoom) {
-      const updateFields = { status: 'available' };
-      if (resolvedCatId) updateFields.category_id = resolvedCatId;
-
-      const { data: updRoom, error: updErr } = await supabaseAdmin
-        .from('rooms')
-        .update(updateFields)
-        .eq('id', existingRoom.id)
-        .select(`
-          *,
-          room_categories (id, name, base_price, max_occupancy),
-          floors (id, floor_number, floor_name)
-        `)
-        .single();
-      if (updErr) throw updErr;
-      roomData = updRoom;
+      existingRoom.status = 'available';
+      if (targetCat) existingRoom.category_id = targetCat.id;
     } else {
-      const insertFields = {
-        floor_id: resolvedFloorId,
+      existingRoom = {
+        id: generateUuid(),
+        residency_id: residencyId,
+        floor_id: targetFloor.id,
+        category_id: targetCat.id,
         room_number: trimmedRoomNum,
-        status: 'available'
+        status: 'available',
+        created_at: new Date().toISOString(),
       };
-      if (resolvedCatId) insertFields.category_id = resolvedCatId;
-
-      const { data: insRoom, error: insErr } = await supabaseAdmin
-        .from('rooms')
-        .insert(insertFields)
-        .select(`
-          *,
-          room_categories (id, name, base_price, max_occupancy),
-          floors (id, floor_number, floor_name)
-        `)
-        .single();
-
-      if (insErr) {
-        // If unique constraint error (room exists), gracefully update
-        if (insErr.code === '23505') {
-          const { data: retryRoom } = await supabaseAdmin
-            .from('rooms')
-            .update({ category_id: resolvedCatId, status: 'available' })
-            .eq('floor_id', resolvedFloorId)
-            .eq('room_number', trimmedRoomNum)
-            .select(`
-              *,
-              room_categories (id, name, base_price, max_occupancy),
-              floors (id, floor_number, floor_name)
-            `)
-            .single();
-          roomData = retryRoom;
-        } else {
-          throw insErr;
-        }
-      } else {
-        roomData = insRoom;
-      }
+      rooms.push(existingRoom);
     }
 
-    // 4. Invalidate affected caches
     await invalidateRoomsCache(residencyId);
-
     logger.success(`Room created/updated: ${trimmedRoomNum}`);
-    return roomData;
+
+    return {
+      ...existingRoom,
+      room_categories: targetCat,
+      floors: targetFloor,
+    };
   }
 
   /**
@@ -291,75 +172,45 @@ class RoomService {
   async updateRoom({ residencyId, id, room_number, category_id, floor_id, status, category_name, base_price }) {
     if (!id) throw new BadRequestError('Room id is required');
 
-    let targetId = id;
-    if (!UUID_REGEX.test(targetId)) {
-      const cleanNum = String(targetId).replace(/^r-/, '');
-      const { data: matchedRoom } = await supabaseAdmin
-        .from('rooms')
-        .select('id, floors!inner(residency_id)')
-        .eq('floors.residency_id', residencyId)
-        .eq('room_number', cleanNum)
-        .limit(1)
-        .maybeSingle();
-
-      if (matchedRoom) {
-        targetId = matchedRoom.id;
-      } else {
-        throw new NotFoundError('Room not found');
-      }
+    let targetRoom = rooms.find((r) => r.id === id);
+    if (!targetRoom) {
+      const cleanNum = String(id).replace(/^r-/, '');
+      targetRoom = rooms.find((r) => r.room_number === cleanNum);
     }
 
-    const updateData = {};
-    if (room_number) updateData.room_number = String(room_number).trim();
-    if (category_id && UUID_REGEX.test(category_id)) updateData.category_id = category_id;
-    if (floor_id && UUID_REGEX.test(floor_id)) updateData.floor_id = floor_id;
-    if (status) updateData.status = status;
+    if (!targetRoom) throw new NotFoundError('Room not found');
 
-    // Resolve category by name/price if provided without category_id
-    if (!updateData.category_id && category_name) {
+    if (room_number) targetRoom.room_number = String(room_number).trim();
+    if (category_id) targetRoom.category_id = category_id;
+    if (floor_id) targetRoom.floor_id = floor_id;
+    if (status) targetRoom.status = status;
+
+    if (!category_id && category_name) {
       const catName = String(category_name).trim();
-      const catPrice = Number(base_price) || 1500;
-      const { data: matchedCat } = await supabaseAdmin
-        .from('room_categories')
-        .select('id')
-        .eq('residency_id', residencyId)
-        .ilike('name', catName)
-        .limit(1)
-        .maybeSingle();
-
-      if (matchedCat) {
-        updateData.category_id = matchedCat.id;
-      } else {
-        const { data: newCat } = await supabaseAdmin
-          .from('room_categories')
-          .insert({
-            residency_id: residencyId,
-            name: catName,
-            base_price: catPrice,
-            max_occupancy: 2
-          })
-          .select()
-          .single();
-        if (newCat) updateData.category_id = newCat.id;
+      let matchedCat = categories.find((c) => c.name.toLowerCase() === catName.toLowerCase());
+      if (!matchedCat) {
+        matchedCat = {
+          id: generateUuid(),
+          residency_id: residencyId,
+          name: catName,
+          base_price: Number(base_price) || 1500,
+          max_occupancy: 2,
+          created_at: new Date().toISOString(),
+        };
+        categories.push(matchedCat);
       }
+      targetRoom.category_id = matchedCat.id;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('rooms')
-      .update(updateData)
-      .eq('id', targetId)
-      .select(`
-        *,
-        room_categories (id, name, base_price, max_occupancy),
-        floors (id, floor_number, floor_name)
-      `)
-      .single();
-
-    if (error) throw error;
-    if (!data) throw new NotFoundError('Room not found');
+    const cat = categories.find((c) => c.id === targetRoom.category_id) || categories[0];
+    const flr = floors.find((f) => f.id === targetRoom.floor_id) || floors[0];
 
     await invalidateRoomsCache(residencyId);
-    return data;
+    return {
+      ...targetRoom,
+      room_categories: cat,
+      floors: flr,
+    };
   }
 
   /**
@@ -368,40 +219,28 @@ class RoomService {
   async deleteRoom({ residencyId, id }) {
     if (!id) return { message: 'Room deleted successfully' };
 
-    let targetId = id;
-    if (!UUID_REGEX.test(targetId)) {
-      const cleanNum = String(targetId).replace(/^r-/, '');
-      const { data: matchedRoom } = await supabaseAdmin
-        .from('rooms')
-        .select('id, floors!inner(residency_id)')
-        .eq('floors.residency_id', residencyId)
-        .eq('room_number', cleanNum)
-        .limit(1)
-        .maybeSingle();
+    let roomIndex = rooms.findIndex((r) => r.id === id);
+    if (roomIndex === -1) {
+      const cleanNum = String(id).replace(/^r-/, '');
+      roomIndex = rooms.findIndex((r) => r.room_number === cleanNum);
+    }
 
-      if (matchedRoom) {
-        targetId = matchedRoom.id;
-      } else {
-        // Ghost/mock room pruned locally; return success
-        await invalidateRoomsCache(residencyId);
-        return { message: 'Room pruned successfully', id };
+    if (roomIndex === -1) {
+      await invalidateRoomsCache(residencyId);
+      return { message: 'Room pruned successfully', id };
+    }
+
+    const deletedRoom = rooms.splice(roomIndex, 1)[0];
+
+    // Cascade delete bookings for this room
+    for (let i = bookings.length - 1; i >= 0; i--) {
+      if (bookings[i].room_id === deletedRoom.id) {
+        bookings.splice(i, 1);
       }
     }
 
-    await supabaseAdmin
-      .from('bookings')
-      .delete()
-      .eq('room_id', targetId);
-
-    const { error } = await supabaseAdmin
-      .from('rooms')
-      .delete()
-      .eq('id', targetId);
-
-    if (error && error.code !== 'PGRST116') throw error;
-
     await invalidateRoomsCache(residencyId);
-    return { message: 'Room deleted successfully', id: targetId };
+    return { message: 'Room deleted successfully', id: deletedRoom.id };
   }
 
   /**
@@ -409,22 +248,12 @@ class RoomService {
    */
   async getCategories(residencyId) {
     const cacheKey = `residency:${residencyId}:room_categories`;
-
     const cached = await getCache(cacheKey);
-    if (cached) {
-      return cached;
-    }
+    if (cached) return cached;
 
-    const { data, error } = await supabaseAdmin
-      .from('room_categories')
-      .select('*')
-      .eq('residency_id', residencyId)
-      .order('name');
-
-    if (error) throw error;
-
-    await setCache(cacheKey, data, TTL.CATEGORIES);
-    return data;
+    const resCategories = categories.filter((c) => !c.residency_id || c.residency_id === residencyId);
+    await setCache(cacheKey, resCategories, TTL.CATEGORIES);
+    return resCategories;
   }
 
   /**
@@ -438,96 +267,62 @@ class RoomService {
     const catName = String(name).trim();
     const price = Number(base_price) || 1500;
 
-    // Check if category already exists
-    const { data: existingCat } = await supabaseAdmin
-      .from('room_categories')
-      .select('*')
-      .eq('residency_id', residencyId)
-      .ilike('name', catName)
-      .limit(1)
-      .maybeSingle();
+    let existingCat = categories.find(
+      (c) => (!c.residency_id || c.residency_id === residencyId) && c.name.toLowerCase() === catName.toLowerCase()
+    );
 
     if (existingCat) {
-      const { data: updatedCat, error: updErr } = await supabaseAdmin
-        .from('room_categories')
-        .update({ base_price: price, max_occupancy: Number(max_occupancy) || 2 })
-        .eq('id', existingCat.id)
-        .select()
-        .single();
-      if (updErr) throw updErr;
+      existingCat.base_price = price;
+      existingCat.max_occupancy = Number(max_occupancy) || 2;
       await invalidateCategoriesCache(residencyId);
-      return updatedCat;
+      return existingCat;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('room_categories')
-      .insert({
-        residency_id: residencyId,
-        name: catName,
-        base_price: price,
-        max_occupancy: max_occupancy || 2
-      })
-      .select()
-      .single();
+    const newCat = {
+      id: generateUuid(),
+      residency_id: residencyId,
+      name: catName,
+      base_price: price,
+      max_occupancy: Number(max_occupancy) || 2,
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) throw error;
-
+    categories.push(newCat);
     await invalidateCategoriesCache(residencyId);
     logger.success(`Category created: ${catName}`);
-    return data;
+    return newCat;
   }
 
   /**
    * Update a room category
    */
   async updateCategory({ residencyId, id, name, base_price, max_occupancy }) {
-    if (!UUID_REGEX.test(id)) {
-      return { id, name, base_price, max_occupancy };
-    }
+    const cat = categories.find((c) => c.id === id);
+    if (!cat) throw new NotFoundError('Category not found');
 
-    const { data, error } = await supabaseAdmin
-      .from('room_categories')
-      .update({ name: String(name).trim(), base_price: Number(base_price), max_occupancy })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (!data) throw new NotFoundError('Category not found');
+    if (name) cat.name = String(name).trim();
+    if (base_price) cat.base_price = Number(base_price);
+    if (max_occupancy) cat.max_occupancy = Number(max_occupancy);
 
     await invalidateCategoriesCache(residencyId);
-    return data;
+    return cat;
   }
 
   /**
    * Delete a room category
    */
   async deleteCategory({ residencyId, id }) {
-    if (!UUID_REGEX.test(id)) {
-      return { message: 'Category pruned successfully' };
-    }
+    const catIndex = categories.findIndex((c) => c.id === id);
+    if (catIndex === -1) return { message: 'Category pruned successfully' };
 
-    // Reassign any rooms that reference this category
-    const { data: fallbackCat } = await supabaseAdmin
-      .from('room_categories')
-      .select('id')
-      .eq('residency_id', residencyId)
-      .neq('id', id)
-      .limit(1)
-      .maybeSingle();
+    categories.splice(catIndex, 1);
+    const fallbackCat = categories[0] || null;
 
-    const fallbackId = fallbackCat ? fallbackCat.id : null;
-    await supabaseAdmin
-      .from('rooms')
-      .update({ category_id: fallbackId })
-      .eq('category_id', id);
-
-    const { error } = await supabaseAdmin
-      .from('room_categories')
-      .delete()
-      .eq('id', id);
-
-    if (error && error.code !== 'PGRST116') throw error;
+    rooms.forEach((r) => {
+      if (r.category_id === id) {
+        r.category_id = fallbackCat ? fallbackCat.id : null;
+      }
+    });
 
     await invalidateCategoriesCache(residencyId);
     return { message: 'Category deleted successfully' };

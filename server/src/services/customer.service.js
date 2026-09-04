@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../config/supabase');
+const { customers, bookings, rooms, categories, generateUuid } = require('./datastore');
 const { logger } = require('../utils/logger');
 const { getCache, setCache, invalidateCustomerSearchCache, TTL } = require('./cache.service');
 const { NotFoundError, BadRequestError, ConflictError } = require('../utils/errors');
@@ -10,32 +10,33 @@ class CustomerService {
   async getCustomers({ residencyId, search, page = 1, limit = 50 }) {
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 50;
-    const offset = (pageNum - 1) * limitNum;
 
-    let query = supabaseAdmin
-      .from('customers')
-      .select('*', { count: 'exact' })
-      .eq('residency_id', residencyId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limitNum - 1);
+    let filtered = customers.filter((c) => !c.residency_id || c.residency_id === residencyId);
 
     if (search) {
-      query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`);
+      const q = search.toLowerCase();
+      filtered = filtered.filter((c) =>
+        (c.full_name && c.full_name.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.toLowerCase().includes(q))
+      );
     }
 
-    const { data, error, count } = await query;
-    if (error) throw error;
+    filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    const total = filtered.length;
+    const offset = (pageNum - 1) * limitNum;
+    const paginated = filtered.slice(offset, offset + limitNum);
 
     return {
-      customers: data,
-      total: count,
+      customers: paginated,
+      total,
       page: pageNum,
-      limit: limitNum
+      limit: limitNum,
     };
   }
 
   /**
-   * Autosuggest customer search by phone or name with Redis caching
+   * Autosuggest customer search by phone or name with caching
    */
   async searchCustomers({ residencyId, query: q }) {
     if (!q || q.length < 2) {
@@ -45,50 +46,53 @@ class CustomerService {
     const normalized = q.trim().toLowerCase();
     const cacheKey = `residency:${residencyId}:customers:search:${normalized}`;
 
-    // 1. Try Redis cache
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('customers')
-      .select('id, full_name, phone, age, address, aadhar_number')
-      .eq('residency_id', residencyId)
-      .or(`phone.ilike.%${q}%,full_name.ilike.%${q}%`)
-      .limit(10);
+    const matched = customers
+      .filter((c) =>
+        (!c.residency_id || c.residency_id === residencyId) &&
+        ((c.phone && c.phone.includes(normalized)) || (c.full_name && c.full_name.toLowerCase().includes(normalized)))
+      )
+      .slice(0, 10)
+      .map((c) => ({
+        id: c.id,
+        full_name: c.full_name,
+        phone: c.phone,
+        age: c.age,
+        address: c.address,
+        aadhar_number: c.aadhar_number,
+      }));
 
-    if (error) throw error;
-
-    // 2. Populate Redis cache
-    await setCache(cacheKey, data, TTL.CUSTOMER_SEARCH);
-
-    return data;
+    await setCache(cacheKey, matched, TTL.CUSTOMER_SEARCH);
+    return matched;
   }
 
   /**
    * Get single customer with booking history
    */
   async getCustomer({ residencyId, id }) {
-    const { data: customer, error } = await supabaseAdmin
-      .from('customers')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
+    const customer = customers.find((c) => c.id === id);
     if (!customer) throw new NotFoundError('Customer not found');
 
-    const { data: bookings } = await supabaseAdmin
-      .from('bookings')
-      .select(`
-        *,
-        rooms (room_number, room_categories (name))
-      `)
-      .eq('customer_id', id)
-      .order('created_at', { ascending: false });
+    const customerBookings = bookings
+      .filter((b) => b.customer_id === id)
+      .map((b) => {
+        const rm = rooms.find((r) => r.id === b.room_id) || { room_number: '—' };
+        const cat = categories.find((c) => c.id === rm.category_id) || { name: 'Standard' };
+        return {
+          ...b,
+          rooms: {
+            room_number: rm.room_number,
+            room_categories: cat,
+          },
+        };
+      })
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-    return { ...customer, booking_history: bookings || [] };
+    return { ...customer, booking_history: customerBookings };
   }
 
   /**
@@ -108,31 +112,28 @@ class CustomerService {
       throw new BadRequestError('full_name and phone are required');
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('customers')
-      .insert({
-        residency_id: residencyId,
-        full_name,
-        phone,
-        age,
-        address,
-        aadhar_number,
-        aadhar_photo_url,
-        passport_photo_url
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        throw new ConflictError('Customer with this phone number already exists');
-      }
-      throw error;
+    const existing = customers.find((c) => c.phone === phone);
+    if (existing) {
+      throw new ConflictError('Customer with this phone number already exists');
     }
 
+    const newCust = {
+      id: generateUuid(),
+      residency_id: residencyId,
+      full_name,
+      phone,
+      age: age || null,
+      address: address || '',
+      aadhar_number: aadhar_number || '',
+      aadhar_photo_url: aadhar_photo_url || null,
+      passport_photo_url: passport_photo_url || null,
+      created_at: new Date().toISOString(),
+    };
+
+    customers.push(newCust);
     logger.success(`Customer created: ${full_name} (${phone})`);
     await invalidateCustomerSearchCache(residencyId);
-    return data;
+    return newCust;
   }
 
   /**
@@ -149,26 +150,19 @@ class CustomerService {
     aadhar_photo_url,
     passport_photo_url
   }) {
-    const { data, error } = await supabaseAdmin
-      .from('customers')
-      .update({
-        full_name,
-        phone,
-        age,
-        address,
-        aadhar_number,
-        aadhar_photo_url,
-        passport_photo_url
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    const customer = customers.find((c) => c.id === id);
+    if (!customer) throw new NotFoundError('Customer not found');
 
-    if (error) throw error;
-    if (!data) throw new NotFoundError('Customer not found');
+    if (full_name !== undefined) customer.full_name = full_name;
+    if (phone !== undefined) customer.phone = phone;
+    if (age !== undefined) customer.age = age;
+    if (address !== undefined) customer.address = address;
+    if (aadhar_number !== undefined) customer.aadhar_number = aadhar_number;
+    if (aadhar_photo_url !== undefined) customer.aadhar_photo_url = aadhar_photo_url;
+    if (passport_photo_url !== undefined) customer.passport_photo_url = passport_photo_url;
 
     await invalidateCustomerSearchCache(residencyId);
-    return data;
+    return customer;
   }
 
   /**
@@ -188,72 +182,52 @@ class CustomerService {
       throw new BadRequestError('full_name and phone are required');
     }
 
-    const { data: existing } = await supabaseAdmin
-      .from('customers')
-      .select('*')
-      .eq('residency_id', residencyId)
-      .eq('phone', phone)
-      .single();
-
+    let existing = customers.find((c) => c.phone === phone);
     if (existing) {
-      const { data: updated, error: updErr } = await supabaseAdmin
-        .from('customers')
-        .update({
-          full_name: full_name || existing.full_name,
-          age: age || existing.age,
-          address: address || existing.address,
-          aadhar_number: aadhar_number || existing.aadhar_number,
-          aadhar_photo_url: aadhar_photo_url || existing.aadhar_photo_url,
-          passport_photo_url: passport_photo_url || existing.passport_photo_url
-        })
-        .eq('id', existing.id)
-        .select()
-        .single();
-
-      if (updErr) throw updErr;
+      if (full_name) existing.full_name = full_name;
+      if (age) existing.age = age;
+      if (address) existing.address = address;
+      if (aadhar_number) existing.aadhar_number = aadhar_number;
+      if (aadhar_photo_url) existing.aadhar_photo_url = aadhar_photo_url;
+      if (passport_photo_url) existing.passport_photo_url = passport_photo_url;
 
       await invalidateCustomerSearchCache(residencyId);
-      return { customer: updated, isNew: false };
+      return { customer: existing, isNew: false };
     }
 
-    const { data: newCustomer, error } = await supabaseAdmin
-      .from('customers')
-      .insert({
-        residency_id: residencyId,
-        full_name,
-        phone,
-        age,
-        address,
-        aadhar_number,
-        aadhar_photo_url,
-        passport_photo_url
-      })
-      .select()
-      .single();
+    const newCust = {
+      id: generateUuid(),
+      residency_id: residencyId,
+      full_name,
+      phone,
+      age: age || null,
+      address: address || '',
+      aadhar_number: aadhar_number || '',
+      aadhar_photo_url: aadhar_photo_url || null,
+      passport_photo_url: passport_photo_url || null,
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) throw error;
-
+    customers.push(newCust);
     await invalidateCustomerSearchCache(residencyId);
     logger.success(`New customer created: ${full_name} (${phone})`);
-    return { customer: newCustomer, isNew: true };
+    return { customer: newCust, isNew: true };
   }
 
   /**
-   * Delete customer and cascade/disassociate their bookings
+   * Delete customer and disassociate their bookings
    */
   async deleteCustomer({ residencyId, id }) {
-    // Delete bookings associated with customer
-    await supabaseAdmin
-      .from('bookings')
-      .delete()
-      .eq('customer_id', id);
+    const idx = customers.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      customers.splice(idx, 1);
+    }
 
-    const { error } = await supabaseAdmin
-      .from('customers')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    for (let i = bookings.length - 1; i >= 0; i--) {
+      if (bookings[i].customer_id === id) {
+        bookings.splice(i, 1);
+      }
+    }
 
     await invalidateCustomerSearchCache(residencyId);
     return { message: 'Customer deleted successfully' };

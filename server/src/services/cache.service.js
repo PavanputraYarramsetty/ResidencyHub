@@ -1,5 +1,7 @@
-const { redisClient, isRedisAvailable } = require('../config/redis');
 const { logger } = require('../utils/logger');
+
+// In-memory cache map
+const memoryCache = new Map();
 
 // Standard TTL defaults (in seconds)
 const TTL = {
@@ -17,32 +19,13 @@ const TTL = {
  * @returns {Promise<any|null>}
  */
 async function getCache(key) {
-  if (!isRedisAvailable()) {
-    logger.info('Redis unavailable — falling back to Supabase');
+  const item = memoryCache.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiresAt) {
+    memoryCache.delete(key);
     return null;
   }
-
-  try {
-    const raw = await redisClient.get(key);
-    if (!raw) {
-      logger.info(`Redis cache MISS: ${key}`);
-      return null;
-    }
-
-    try {
-      const parsed = JSON.parse(raw);
-      logger.info(`Redis cache HIT: ${key}`);
-      return parsed;
-    } catch (parseErr) {
-      logger.warn(`Redis corrupted JSON for key ${key}, removing entry.`);
-      await redisClient.del(key).catch(() => {});
-      return null;
-    }
-  } catch (err) {
-    logger.warn(`Redis getCache error (${key}): ${err.message}`);
-    logger.info('Redis unavailable — falling back to Supabase');
-    return null;
-  }
+  return item.value;
 }
 
 /**
@@ -53,17 +36,12 @@ async function getCache(key) {
  * @returns {Promise<boolean>}
  */
 async function setCache(key, value, ttlSeconds = 60) {
-  if (!isRedisAvailable() || value === undefined) return false;
-
-  try {
-    const serialized = JSON.stringify(value);
-    await redisClient.set(key, serialized, { EX: ttlSeconds });
-    logger.info(`Redis cache SET: ${key}`);
-    return true;
-  } catch (err) {
-    logger.warn(`Redis setCache error (${key}): ${err.message}`);
-    return false;
-  }
+  if (value === undefined) return false;
+  memoryCache.set(key, {
+    value,
+    expiresAt: Date.now() + ttlSeconds * 1000,
+  });
+  return true;
 }
 
 /**
@@ -72,51 +50,24 @@ async function setCache(key, value, ttlSeconds = 60) {
  * @returns {Promise<boolean>}
  */
 async function deleteCache(key) {
-  if (!isRedisAvailable()) return false;
-
-  try {
-    const result = await redisClient.del(key);
-    if (result > 0) {
-      logger.info(`Redis cache invalidated: ${key}`);
-    }
-    return true;
-  } catch (err) {
-    logger.warn(`Redis deleteCache error (${key}): ${err.message}`);
-    return false;
-  }
+  return memoryCache.delete(key);
 }
 
 /**
- * Delete all keys matching a pattern
- * @param {string} pattern - e.g. "residency:xxx:rooms*"
+ * Delete all keys matching a prefix/pattern
+ * @param {string} pattern
  * @returns {Promise<number>} Number of keys deleted
  */
 async function deletePattern(pattern) {
-  if (!isRedisAvailable()) return 0;
-
-  try {
-    const keysToDelete = [];
-    for await (const keys of redisClient.scanIterator({ MATCH: pattern, COUNT: 100 })) {
-      if (Array.isArray(keys)) {
-        keysToDelete.push(...keys);
-      } else if (keys) {
-        keysToDelete.push(keys);
-      }
+  const cleanPrefix = pattern.replace(/\*/g, '');
+  let count = 0;
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(cleanPrefix) || key.includes(cleanPrefix)) {
+      memoryCache.delete(key);
+      count++;
     }
-
-    const flatKeys = keysToDelete.flat().filter(Boolean);
-
-    if (flatKeys.length > 0) {
-      const deletedCount = await redisClient.del(flatKeys);
-      logger.info(`Redis cache invalidated: ${pattern} (${deletedCount} keys)`);
-      return deletedCount;
-    }
-
-    return 0;
-  } catch (err) {
-    logger.warn(`Redis deletePattern error (${pattern}): ${err.message}`);
-    return 0;
   }
+  return count;
 }
 
 // ==========================================
@@ -126,50 +77,50 @@ async function deletePattern(pattern) {
 async function invalidateRoomsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:floors*`),
-    deletePattern(`residency:${residency_id}:room*`),
-    deletePattern(`residency:${residency_id}:dashboard*`),
+    deletePattern(`residency:${residency_id}:floors`),
+    deletePattern(`residency:${residency_id}:room`),
+    deletePattern(`residency:${residency_id}:dashboard`),
   ]);
 }
 
 async function invalidateFloorsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:floors*`),
-    deletePattern(`residency:${residency_id}:room*`),
-    deletePattern(`residency:${residency_id}:dashboard*`),
+    deletePattern(`residency:${residency_id}:floors`),
+    deletePattern(`residency:${residency_id}:room`),
+    deletePattern(`residency:${residency_id}:dashboard`),
   ]);
 }
 
 async function invalidateCategoriesCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:floors*`),
-    deletePattern(`residency:${residency_id}:room_categories*`),
-    deletePattern(`residency:${residency_id}:room*`),
+    deletePattern(`residency:${residency_id}:floors`),
+    deletePattern(`residency:${residency_id}:room_categories`),
+    deletePattern(`residency:${residency_id}:room`),
   ]);
 }
 
 async function invalidateBookingsCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:floors*`),
-    deletePattern(`residency:${residency_id}:room*`),
-    deletePattern(`residency:${residency_id}:dashboard*`),
-    deletePattern(`residency:${residency_id}:revenue*`),
+    deletePattern(`residency:${residency_id}:floors`),
+    deletePattern(`residency:${residency_id}:room`),
+    deletePattern(`residency:${residency_id}:dashboard`),
+    deletePattern(`residency:${residency_id}:revenue`),
   ]);
 }
 
 async function invalidateCustomerSearchCache(residency_id) {
   if (!residency_id) return;
-  await deletePattern(`residency:${residency_id}:customers:search*`);
+  await deletePattern(`residency:${residency_id}:customers:search`);
 }
 
 async function invalidateRevenueCache(residency_id) {
   if (!residency_id) return;
   await Promise.all([
-    deletePattern(`residency:${residency_id}:revenue*`),
-    deletePattern(`residency:${residency_id}:dashboard*`),
+    deletePattern(`residency:${residency_id}:revenue`),
+    deletePattern(`residency:${residency_id}:dashboard`),
   ]);
 }
 

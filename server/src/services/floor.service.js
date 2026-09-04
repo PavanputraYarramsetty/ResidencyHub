@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../config/supabase');
+const { floors, rooms, categories, bookings, generateUuid } = require('./datastore');
 const { logger } = require('../utils/logger');
 const { getCache, setCache, invalidateFloorsCache, TTL } = require('./cache.service');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
@@ -8,81 +8,54 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 class FloorService {
   /**
    * Fetch all floors with nested rooms and computed occupancy statistics.
-   * Leverages Redis caching for rapid response.
    */
   async getFloors(residencyId) {
     const cacheKey = `residency:${residencyId}:floors`;
 
-    // 1. Try Redis cache
     const cachedFloors = await getCache(cacheKey);
     if (cachedFloors) {
       return cachedFloors;
     }
 
-    // 2. Query Supabase on cache miss — include rooms with category and active booking data
-    const { data, error } = await supabaseAdmin
-      .from('floors')
-      .select(`
-        *,
-        rooms (
-          id,
-          floor_id,
-          room_number,
-          status,
-          category_id,
-          room_categories (id, name, base_price, max_occupancy)
-        )
-      `)
-      .eq('residency_id', residencyId)
-      .order('floor_number', { ascending: true });
+    // Filter floors for this residency
+    const residencyFloors = floors
+      .filter((f) => !f.residency_id || f.residency_id === residencyId)
+      .sort((a, b) => a.floor_number - b.floor_number);
 
-    if (error) throw error;
+    // Active bookings map: room_id -> booking
+    const activeBookings = bookings.filter((b) =>
+      ['booked', 'checked_in'].includes(b.status) &&
+      (!b.residency_id || b.residency_id === residencyId)
+    );
 
-    // 3. Fetch all active bookings for this residency in ONE query (efficient)
-    const { data: activeBookings } = await supabaseAdmin
-      .from('bookings')
-      .select(`
-        id,
-        room_id,
-        check_in,
-        check_out,
-        rate_per_day,
-        no_of_days,
-        no_of_persons,
-        advance_amount,
-        total_amount,
-        payment_mode,
-        status,
-        customers (
-          id,
-          full_name,
-          phone,
-          age,
-          gender,
-          aadhar_number,
-          address
-        )
-      `)
-      .in('status', ['booked', 'checked_in'])
-      .order('created_at', { ascending: false });
-
-    // Build a map: room_id -> active_booking for O(1) lookup
     const bookingByRoomId = {};
-    (activeBookings || []).forEach(b => {
-      // Only keep the most recent active booking per room
-      if (!bookingByRoomId[b.room_id]) {
-        bookingByRoomId[b.room_id] = b;
-      }
+    activeBookings.forEach((b) => {
+      bookingByRoomId[b.room_id] = b;
     });
 
-    // 4. Attach active_booking to each room and compute floor stats
-    const floorsWithStats = (data || []).map(floor => {
-      const rooms = (floor.rooms || [])
-        .map(room => ({
-          ...room,
-          floor_name: floor.floor_name,
-          active_booking: bookingByRoomId[room.id] || null
-        }))
+    const categoriesMap = {};
+    categories.forEach((c) => {
+      categoriesMap[c.id] = c;
+    });
+
+    const floorsWithStats = residencyFloors.map((floor) => {
+      const floorRooms = rooms
+        .filter((r) => r.floor_id === floor.id || r.floor_id === `floor-${floor.floor_number}`)
+        .map((room) => {
+          const category = categoriesMap[room.category_id] || {
+            id: room.category_id,
+            name: 'Standard',
+            base_price: 1500,
+            max_occupancy: 2,
+          };
+
+          return {
+            ...room,
+            floor_name: floor.floor_name,
+            room_categories: category,
+            active_booking: bookingByRoomId[room.id] || null,
+          };
+        })
         .sort((a, b) => {
           const numA = parseInt(a.room_number, 10);
           const numB = parseInt(b.room_number, 10);
@@ -90,21 +63,19 @@ class FloorService {
           return String(a.room_number).localeCompare(String(b.room_number));
         });
 
-      const totalRooms = rooms.length;
-      const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
-      const availableRooms = rooms.filter(r => r.status === 'available').length;
-      const reservedRooms = rooms.filter(r => r.status === 'reserved').length;
+      const totalRooms = floorRooms.length;
+      const occupiedRooms = floorRooms.filter((r) => r.status === 'occupied').length;
+      const availableRooms = floorRooms.filter((r) => r.status === 'available').length;
+      const reservedRooms = floorRooms.filter((r) => r.status === 'reserved').length;
 
       return {
         ...floor,
-        rooms,
-        stats: { totalRooms, occupiedRooms, availableRooms, reservedRooms }
+        rooms: floorRooms,
+        stats: { totalRooms, occupiedRooms, availableRooms, reservedRooms },
       };
     });
 
-    // 5. Populate Redis cache
     await setCache(cacheKey, floorsWithStats, TTL.FLOORS);
-
     return floorsWithStats;
   }
 
@@ -118,14 +89,7 @@ class FloorService {
 
     let resolvedFloorNumber = floorNumber;
     if (resolvedFloorNumber === undefined || resolvedFloorNumber === null || resolvedFloorNumber === '' || isNaN(Number(resolvedFloorNumber))) {
-      const { data: existingFloors } = await supabaseAdmin
-        .from('floors')
-        .select('floor_number')
-        .eq('residency_id', residencyId)
-        .order('floor_number', { ascending: false })
-        .limit(1);
-
-      const maxFloor = existingFloors && existingFloors.length > 0 ? existingFloors[0].floor_number : -1;
+      const maxFloor = floors.length > 0 ? Math.max(...floors.map((f) => f.floor_number)) : -1;
       resolvedFloorNumber = maxFloor + 1;
     } else {
       resolvedFloorNumber = Number(resolvedFloorNumber);
@@ -133,60 +97,29 @@ class FloorService {
 
     const resolvedFloorName = (floorName ? String(floorName).trim() : '') || (resolvedFloorNumber === 0 ? 'Ground Floor' : `Floor ${resolvedFloorNumber}`);
 
-    // Check if floor with floor_number already exists
-    const { data: existingFloor } = await supabaseAdmin
-      .from('floors')
-      .select('*, rooms(*, room_categories(*))')
-      .eq('residency_id', residencyId)
-      .eq('floor_number', resolvedFloorNumber)
-      .limit(1)
-      .maybeSingle();
+    const existingFloor = floors.find(
+      (f) => (!f.residency_id || f.residency_id === residencyId) && f.floor_number === resolvedFloorNumber
+    );
 
     if (existingFloor) {
-      const { data: updatedFloor, error: updErr } = await supabaseAdmin
-        .from('floors')
-        .update({ floor_name: resolvedFloorName })
-        .eq('id', existingFloor.id)
-        .select('*, rooms(*, room_categories(*))')
-        .single();
-
-      if (updErr) throw updErr;
-
+      existingFloor.floor_name = resolvedFloorName;
       await invalidateFloorsCache(residencyId);
-      return { floor: updatedFloor || existingFloor, isNew: false };
+      return { floor: { ...existingFloor, rooms: [] }, isNew: false };
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('floors')
-      .insert({
-        residency_id: residencyId,
-        floor_number: resolvedFloorNumber,
-        floor_name: resolvedFloorName
-      })
-      .select('*, rooms(*, room_categories(*))')
-      .single();
+    const newFloor = {
+      id: generateUuid(),
+      residency_id: residencyId,
+      floor_number: resolvedFloorNumber,
+      floor_name: resolvedFloorName,
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      // If unique constraint collision, gracefully update
-      if (error.code === '23505') {
-        const { data: fallbackFloor } = await supabaseAdmin
-          .from('floors')
-          .update({ floor_name: resolvedFloorName })
-          .eq('residency_id', residencyId)
-          .eq('floor_number', resolvedFloorNumber)
-          .select('*, rooms(*, room_categories(*))')
-          .single();
-
-        await invalidateFloorsCache(residencyId);
-        return { floor: fallbackFloor, isNew: false };
-      }
-      throw error;
-    }
-
+    floors.push(newFloor);
     await invalidateFloorsCache(residencyId);
     logger.success(`Floor created: ${resolvedFloorName} (${resolvedFloorNumber})`);
 
-    return { floor: { ...data, rooms: data.rooms || [] }, isNew: true };
+    return { floor: { ...newFloor, rooms: [] }, isNew: true };
   }
 
   /**
@@ -195,42 +128,23 @@ class FloorService {
   async updateFloor({ id, residencyId, floorNumber, floorName }) {
     if (!id) throw new BadRequestError('Floor id is required');
 
-    let targetId = id;
-    if (!UUID_REGEX.test(targetId)) {
-      const cleanNum = parseInt(String(targetId).replace(/^floor-/, ''), 10);
-      if (!isNaN(cleanNum)) {
-        const { data: matchedFloor } = await supabaseAdmin
-          .from('floors')
-          .select('id')
-          .eq('residency_id', residencyId)
-          .eq('floor_number', cleanNum)
-          .limit(1)
-          .maybeSingle();
-
-        if (matchedFloor) targetId = matchedFloor.id;
-      }
+    let targetFloor = floors.find((f) => f.id === id);
+    if (!targetFloor && !UUID_REGEX.test(id)) {
+      const cleanNum = parseInt(String(id).replace(/^floor-/, ''), 10);
+      targetFloor = floors.find((f) => f.floor_number === cleanNum);
     }
 
-    const updateFields = {};
+    if (!targetFloor) throw new NotFoundError('Floor not found');
+
     if (floorNumber !== undefined && floorNumber !== null && !isNaN(Number(floorNumber))) {
-      updateFields.floor_number = Number(floorNumber);
+      targetFloor.floor_number = Number(floorNumber);
     }
     if (floorName) {
-      updateFields.floor_name = String(floorName).trim();
+      targetFloor.floor_name = String(floorName).trim();
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('floors')
-      .update(updateFields)
-      .eq('id', targetId)
-      .select('*, rooms(*, room_categories(*))')
-      .single();
-
-    if (error) throw error;
-    if (!data) throw new NotFoundError('Floor not found');
-
     await invalidateFloorsCache(residencyId);
-    return data;
+    return targetFloor;
   }
 
   /**
@@ -239,52 +153,37 @@ class FloorService {
   async deleteFloor({ id, residencyId }) {
     if (!id) return { message: 'Floor deleted successfully' };
 
-    let targetId = id;
-    if (!UUID_REGEX.test(targetId)) {
-      const cleanNum = parseInt(String(targetId).replace(/^floor-/, ''), 10);
-      if (!isNaN(cleanNum)) {
-        const { data: matchedFloor } = await supabaseAdmin
-          .from('floors')
-          .select('id')
-          .eq('residency_id', residencyId)
-          .eq('floor_number', cleanNum)
-          .limit(1)
-          .maybeSingle();
+    let floorIndex = floors.findIndex((f) => f.id === id);
+    if (floorIndex === -1 && !UUID_REGEX.test(id)) {
+      const cleanNum = parseInt(String(id).replace(/^floor-/, ''), 10);
+      floorIndex = floors.findIndex((f) => f.floor_number === cleanNum);
+    }
 
-        if (matchedFloor) {
-          targetId = matchedFloor.id;
-        } else {
-          // Ghost/mock floor pruned locally; return success
-          await invalidateFloorsCache(residencyId);
-          return { message: 'Floor pruned successfully', id };
-        }
-      } else {
-        await invalidateFloorsCache(residencyId);
-        return { message: 'Floor pruned successfully', id };
+    if (floorIndex === -1) {
+      await invalidateFloorsCache(residencyId);
+      return { message: 'Floor pruned successfully', id };
+    }
+
+    const deletedFloor = floors.splice(floorIndex, 1)[0];
+
+    // Cascade delete rooms and bookings
+    const roomsToDelete = rooms.filter((r) => r.floor_id === deletedFloor.id);
+    const roomIds = roomsToDelete.map((r) => r.id);
+
+    for (let i = rooms.length - 1; i >= 0; i--) {
+      if (rooms[i].floor_id === deletedFloor.id) {
+        rooms.splice(i, 1);
       }
     }
 
-    // First get rooms on this floor to cascade delete bookings
-    const { data: roomsOnFloor } = await supabaseAdmin
-      .from('rooms')
-      .select('id')
-      .eq('floor_id', targetId);
-
-    if (roomsOnFloor && roomsOnFloor.length > 0) {
-      const roomIds = roomsOnFloor.map(r => r.id);
-      await supabaseAdmin.from('bookings').delete().in('room_id', roomIds);
-      await supabaseAdmin.from('rooms').delete().eq('floor_id', targetId);
+    for (let i = bookings.length - 1; i >= 0; i--) {
+      if (roomIds.includes(bookings[i].room_id)) {
+        bookings.splice(i, 1);
+      }
     }
 
-    const { error } = await supabaseAdmin
-      .from('floors')
-      .delete()
-      .eq('id', targetId);
-
-    if (error && error.code !== 'PGRST116') throw error;
-
     await invalidateFloorsCache(residencyId);
-    return { message: 'Floor deleted successfully', id: targetId };
+    return { message: 'Floor deleted successfully', id: deletedFloor.id };
   }
 }
 
