@@ -74,16 +74,25 @@ export function OwnerBookings() {
   function handlePrintFolio(b) {
     setSelectedInvoiceData({
       bookingId: b.id,
-      room_number: b.rooms?.room_number,
-      category_name: b.rooms?.room_categories?.name,
-      full_name: b.customers?.full_name,
-      phone: b.customers?.phone,
-      check_in: b.check_in,
+      customerName: b.customers?.full_name || b.full_name || 'Guest',
+      full_name: b.customers?.full_name || b.full_name || 'Guest',
+      phone: b.customers?.phone || b.phone || '—',
+      roomNumber: b.rooms?.room_number || b.room_number || '—',
+      room_number: b.rooms?.room_number || b.room_number || '—',
+      categoryName: b.rooms?.room_categories?.name || b.category_name || 'Standard Room',
+      category_name: b.rooms?.room_categories?.name || b.category_name || 'Standard Room',
+      checkIn: b.check_in || b.created_at,
+      check_in: b.check_in || b.created_at,
+      checkOut: b.check_out || new Date().toISOString(),
       check_out: b.check_out || new Date().toISOString(),
-      billable_days: b.billing_units || 1,
-      rate_per_day: b.rate_per_day || b.total_amount,
-      net_total: b.total_amount,
-      payment_mode: b.payment_mode || 'UPI / Cash',
+      billableDays: b.billable_days || b.billing_units || b.no_of_days || 1,
+      billable_days: b.billable_days || b.billing_units || b.no_of_days || 1,
+      ratePerDay: b.rate_per_day || b.total_amount,
+      discountPercent: b.discount_percent || 0,
+      discountAmount: b.discount_amount || 0,
+      netTotal: b.total_amount,
+      total_amount: b.total_amount,
+      paymentMode: b.payment_mode || 'UPI',
     });
     setIsInvoiceOpen(true);
   }
@@ -466,7 +475,10 @@ export function OwnerBookings() {
       {/* Invoice Receipt Modal */}
       <InvoiceReceiptModal
         isOpen={isInvoiceOpen}
-        onClose={() => setIsInvoiceOpen(false)}
+        onClose={() => {
+          setIsInvoiceOpen(false);
+          setSelectedInvoiceData(null);
+        }}
         invoiceData={selectedInvoiceData}
       />
     </div>

@@ -9,6 +9,18 @@ import { Printer, CheckCircle, Hotel } from 'lucide-react';
 export function InvoiceReceiptModal({ isOpen, onClose, invoiceData }) {
   if (!isOpen || !invoiceData) return null;
 
+  const customerName = invoiceData.customerName || invoiceData.full_name || invoiceData.customers?.full_name || 'Guest';
+  const phone = invoiceData.phone || invoiceData.customers?.phone || '—';
+  const roomNumber = invoiceData.roomNumber || invoiceData.room_number || invoiceData.rooms?.room_number || '—';
+  const categoryName = invoiceData.categoryName || invoiceData.category_name || invoiceData.rooms?.room_categories?.name || 'Standard Room';
+  const checkIn = invoiceData.checkIn || invoiceData.check_in || invoiceData.created_at || new Date().toISOString();
+  const checkOut = invoiceData.checkOut || invoiceData.check_out || new Date().toISOString();
+  const billableDays = invoiceData.billableDays || invoiceData.billable_days || invoiceData.billing_units || 1;
+  const netTotal = invoiceData.netTotal !== undefined ? invoiceData.netTotal : (invoiceData.total_amount !== undefined ? invoiceData.total_amount : 0);
+  const paymentMode = invoiceData.paymentMode || invoiceData.payment_mode || 'UPI';
+  const discountPercent = invoiceData.discountPercent || invoiceData.discount_percent || 0;
+  const discountAmount = invoiceData.discountAmount || invoiceData.discount_amount || 0;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Checkout Invoice & Receipt" maxWidth="max-w-md">
       <div className="space-y-4 text-xs">
@@ -23,19 +35,20 @@ export function InvoiceReceiptModal({ isOpen, onClose, invoiceData }) {
           <div className="grid grid-cols-2 gap-2 text-[11px] mb-3 pb-2 border-b">
             <div>
               <span className="text-gray-500 block">Guest Name:</span>
-              <span className="font-bold">{invoiceData.customerName || invoiceData.full_name}</span>
+              <span className="font-bold">{customerName}</span>
+              {phone !== '—' && <span className="block text-[10px] text-gray-400 font-mono">{phone}</span>}
             </div>
             <div className="text-right">
               <span className="text-gray-500 block">Room Number:</span>
-              <span className="font-bold font-mono">Room {invoiceData.roomNumber || invoiceData.room_number}</span>
+              <span className="font-bold font-mono">Room {roomNumber}</span>
             </div>
             <div>
               <span className="text-gray-500 block">Check In:</span>
-              <span>{formatIndianDateTime(invoiceData.checkIn)}</span>
+              <span>{formatIndianDateTime(checkIn)}</span>
             </div>
             <div className="text-right">
               <span className="text-gray-500 block">Check Out:</span>
-              <span>{formatIndianDateTime(invoiceData.checkOut)}</span>
+              <span>{formatIndianDateTime(checkOut)}</span>
             </div>
           </div>
 
@@ -49,17 +62,23 @@ export function InvoiceReceiptModal({ isOpen, onClose, invoiceData }) {
             </thead>
             <tbody>
               <tr className="border-b">
-                <td className="py-1.5">{invoiceData.categoryName || 'Standard Room'}</td>
-                <td className="py-1.5 text-center font-mono">{invoiceData.billableDays || 1} × 24h</td>
-                <td className="py-1.5 text-right font-mono font-bold">{formatINR(invoiceData.netTotal || invoiceData.total_amount)}</td>
+                <td className="py-1.5">{categoryName}</td>
+                <td className="py-1.5 text-center font-mono">{billableDays} × 24h</td>
+                <td className="py-1.5 text-right font-mono font-bold">{formatINR(netTotal)}</td>
               </tr>
             </tbody>
           </table>
 
           <div className="space-y-1 text-right text-[11px]">
+            {discountPercent > 0 && (
+              <div className="flex justify-between text-rose-600 font-medium">
+                <span>Discount ({discountPercent}%):</span>
+                <span>- {formatINR(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold text-xs pt-1 border-t">
-              <span>Net Total Paid ({invoiceData.paymentMode || 'UPI'}):</span>
-              <span>{formatINR(invoiceData.netTotal || invoiceData.total_amount)}</span>
+              <span>Net Total Paid ({paymentMode}):</span>
+              <span>{formatINR(netTotal)}</span>
             </div>
           </div>
 
@@ -70,10 +89,10 @@ export function InvoiceReceiptModal({ isOpen, onClose, invoiceData }) {
 
         {/* Action Controls */}
         <div className="flex items-center justify-between pt-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Close
           </Button>
-          <Button variant="primary" onClick={() => printInvoiceDocument('invoice-receipt-print')}>
+          <Button type="button" variant="primary" onClick={() => printInvoiceDocument('invoice-receipt-print')}>
             <Printer className="w-4 h-4 mr-1.5" />
             Print Guest Receipt
           </Button>

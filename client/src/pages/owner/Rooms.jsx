@@ -533,7 +533,10 @@ export function OwnerRooms() {
 
       <InvoiceReceiptModal
         isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setCheckoutReceiptData(null);
+        }}
         invoiceData={checkoutReceiptData}
       />
     </div>
