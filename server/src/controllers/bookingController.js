@@ -60,7 +60,7 @@ async function createBooking(req, res, next) {
       payment_mode
     } = req.body;
 
-    const residency_id = req.profile?.residency_id;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const userId = req.profile?.id;
 
     const booking = await bookingService.createBooking({

@@ -21,7 +21,13 @@ export function CheckoutConfirmationDialog({
   if (!isOpen || !room) return null;
 
   const activeBooking = booking || room.active_booking;
-  const customer = activeBooking?.customers || { full_name: 'Guest', phone: '—' };
+  const rawCustomer = activeBooking?.customers;
+  const customerName = (rawCustomer?.full_name && rawCustomer.full_name !== 'Guest')
+    ? rawCustomer.full_name
+    : (activeBooking?.full_name || room.full_name || 'Guest');
+  const customerPhone = (rawCustomer?.phone && rawCustomer.phone !== '—')
+    ? rawCustomer.phone
+    : (activeBooking?.phone || room.phone || '—');
   const ratePerDay = activeBooking?.rate_per_day || room.room_categories?.base_price || 1500;
   const checkInTime = activeBooking?.check_in || activeBooking?.check_in_at || new Date().toISOString();
 
@@ -46,8 +52,8 @@ export function CheckoutConfirmationDialog({
         roomId: room.id,
         roomNumber: room.room_number,
         categoryName: room.room_categories?.name || 'Standard',
-        customerName: customer.full_name,
-        phone: customer.phone,
+        customerName,
+        phone: customerPhone,
         checkIn: checkInTime,
         checkOut: new Date().toISOString(),
         billableDays,
@@ -74,7 +80,7 @@ export function CheckoutConfirmationDialog({
           <div>
             <h5 className="font-bold text-amber-900">Checkout Confirmation</h5>
             <p className="text-amber-800 mt-0.5">
-              Checking out <span className="font-bold text-slate-900">{customer.full_name}</span> ({customer.phone}) from{' '}
+              Checking out <span className="font-bold text-slate-900">{customerName}</span> ({customerPhone}) from{' '}
               <span className="font-bold text-slate-900">Room {room.room_number}</span>.
             </p>
           </div>

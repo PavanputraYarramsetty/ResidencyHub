@@ -35,10 +35,25 @@ class FloorService {
 
     const bookingByRoomId = {};
     activeBookings.forEach((b) => {
-      const cust = customersMap[b.customer_id] || b.customers || null;
+      let cust = customersMap[b.customer_id] || b.customers || null;
+      if (!cust || !cust.full_name || cust.full_name === 'Guest') {
+        const found = customers.find(
+          (c) => c.id === b.customer_id || (b.phone && c.phone === b.phone)
+        );
+        if (found) {
+          cust = found;
+        } else if (b.full_name || b.phone) {
+          cust = {
+            id: b.customer_id,
+            full_name: b.full_name || 'Guest',
+            phone: b.phone || '—',
+          };
+        }
+      }
+
       bookingByRoomId[b.room_id] = {
         ...b,
-        customers: cust,
+        customers: cust || { full_name: b.full_name || 'Guest', phone: b.phone || '—' },
       };
     });
 

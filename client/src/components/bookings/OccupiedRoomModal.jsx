@@ -11,7 +11,14 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
 
   const category = room.room_categories || { name: 'Standard', base_price: 1500, max_occupancy: 2 };
   const booking = room.active_booking;
-  const customer = booking?.customers || { full_name: 'Guest', phone: '—' };
+  const rawCustomer = booking?.customers;
+  const customerName = (rawCustomer?.full_name && rawCustomer.full_name !== 'Guest')
+    ? rawCustomer.full_name
+    : (booking?.full_name || room.full_name || 'Guest');
+  const customerPhone = (rawCustomer?.phone && rawCustomer.phone !== '—')
+    ? rawCustomer.phone
+    : (booking?.phone || room.phone || '—');
+  const customerAddress = rawCustomer?.address || booking?.address || '';
   const ratePerDay = booking?.rate_per_day || category.base_price || 1500;
   const checkInTime = booking?.check_in || booking?.check_in_at || new Date().toISOString();
 
@@ -22,7 +29,7 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Occupied Stay — Room ${room.room_number}`} maxWidth="max-w-xl">
-      <div className="space-y-4 text-xs">
+      <div className="space-y-4 text-xs font-['Inter']">
         {/* Top Status Banner */}
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between">
           <div>
@@ -52,20 +59,20 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
               <span className="text-slate-500 flex items-center gap-1.5 mb-0.5 font-medium">
                 <User className="w-3.5 h-3.5 text-blue-600" /> Guest Name
               </span>
-              <p className="text-sm font-bold text-slate-900">{customer.full_name}</p>
+              <p className="text-sm font-bold text-slate-900">{customerName}</p>
             </div>
 
             <div>
               <span className="text-slate-500 flex items-center gap-1.5 mb-0.5 font-medium">
                 <Phone className="w-3.5 h-3.5 text-emerald-600" /> Phone Number
               </span>
-              <p className="text-sm font-mono font-bold text-slate-800">{customer.phone}</p>
+              <p className="text-sm font-mono font-bold text-slate-800">{customerPhone}</p>
             </div>
 
-            {customer.address && (
+            {customerAddress && (
               <div className="sm:col-span-2">
                 <span className="text-slate-500 mb-0.5 block font-medium">Address</span>
-                <p className="text-xs text-slate-700">{customer.address}</p>
+                <p className="text-xs text-slate-700">{customerAddress}</p>
               </div>
             )}
           </div>

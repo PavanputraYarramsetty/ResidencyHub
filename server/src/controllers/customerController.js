@@ -4,7 +4,7 @@ const { logger } = require('../utils/logger');
 // GET /api/customers — List all customers with search
 async function getCustomers(req, res, next) {
   try {
-    const { residency_id } = req.profile;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const { search, page = 1, limit = 50 } = req.query;
 
     const result = await customerService.getCustomers({
@@ -24,7 +24,7 @@ async function getCustomers(req, res, next) {
 // GET /api/customers/search — Autosuggest search by phone or name
 async function searchCustomers(req, res, next) {
   try {
-    const { residency_id } = req.profile;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const { q } = req.query;
 
     const results = await customerService.searchCustomers({
@@ -43,7 +43,7 @@ async function searchCustomers(req, res, next) {
 async function getCustomer(req, res, next) {
   try {
     const { id } = req.params;
-    const residency_id = req.profile?.residency_id;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
 
     const customer = await customerService.getCustomer({ residencyId: residency_id, id });
     res.json(customer);
@@ -59,7 +59,7 @@ async function getCustomer(req, res, next) {
 // POST /api/customers — Create a new customer
 async function createCustomer(req, res, next) {
   try {
-    const { residency_id } = req.profile;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const { full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url } = req.body;
 
     const data = await customerService.createCustomer({
@@ -115,7 +115,7 @@ async function updateCustomer(req, res, next) {
 // POST /api/customers/find-or-create — Find by phone or create new
 async function findOrCreateCustomer(req, res, next) {
   try {
-    const { residency_id } = req.profile;
+    const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
     const { full_name, phone, age, address, aadhar_number, aadhar_photo_url, passport_photo_url } = req.body;
 
     const result = await customerService.findOrCreateCustomer({
