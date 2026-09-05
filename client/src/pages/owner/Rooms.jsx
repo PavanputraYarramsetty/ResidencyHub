@@ -6,6 +6,7 @@ import OccupiedRoomModal from '../../components/bookings/OccupiedRoomModal';
 import CheckoutConfirmationDialog from '../../components/bookings/CheckoutConfirmationDialog';
 import InvoiceReceiptModal from '../../components/bookings/InvoiceReceiptModal';
 import bookingService from '../../services/bookingService';
+import roomService from '../../services/roomService';
 
 export function OwnerRooms() {
   const { floors, refreshFloors } = useResidency();
@@ -19,6 +20,26 @@ export function OwnerRooms() {
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [checkoutReceiptData, setCheckoutReceiptData] = useState(null);
+
+  async function handleSetMaintenance(e, room) {
+    if (e) e.stopPropagation();
+    try {
+      await roomService.updateRoom(room.id, { status: 'maintenance' });
+      await refreshFloors();
+    } catch (err) {
+      console.error('Failed to update maintenance status', err);
+    }
+  }
+
+  async function handleReleaseMaintenance(e, room) {
+    if (e) e.stopPropagation();
+    try {
+      await roomService.updateRoom(room.id, { status: 'available' });
+      await refreshFloors();
+    } catch (err) {
+      console.error('Failed to release room from maintenance', err);
+    }
+  }
 
   const allRooms = floors.flatMap((f) => f.rooms || []);
   const totalCount = allRooms.length;
@@ -410,21 +431,44 @@ export function OwnerRooms() {
                 )}
               </div>
 
-              <div className="mt-4 pt-2.5 border-t border-slate-100">
+              <div className="mt-4 pt-2.5 border-t border-slate-100 font-['Inter']">
                 {isOccupied ? (
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-transparent transition-all text-xs font-bold font-['Inter'] shadow-xs"
+                    onClick={() => handleRoomClick(room)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-transparent transition-all text-xs font-bold shadow-xs cursor-pointer"
                   >
                     <span>View Stay / Checkout</span>
                     <span className="material-symbols-outlined text-base">meeting_room</span>
                   </button>
+                ) : isMaintenance ? (
+                  <button
+                    type="button"
+                    onClick={(e) => handleReleaseMaintenance(e, room)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    <span>Release Room / Ready to Occupy</span>
+                  </button>
                 ) : (
-                  <div className="w-full flex items-center justify-between text-xs font-bold text-slate-700 group-hover:text-blue-600 transition-colors py-0.5 font-['Inter']">
-                    <span>Click to Book</span>
-                    <span className="material-symbols-outlined text-base transition-transform group-hover:translate-x-1">
-                      arrow_forward
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRoomClick(room)}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">add_box</span>
+                      <span>Check-In</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleSetMaintenance(e, room)}
+                      className="px-2.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                      title="Put Room into Maintenance"
+                    >
+                      <span className="material-symbols-outlined text-base">engineering</span>
+                      <span>Maintenance</span>
+                    </button>
                   </div>
                 )}
               </div>

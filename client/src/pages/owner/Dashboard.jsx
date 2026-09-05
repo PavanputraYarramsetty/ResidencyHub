@@ -3,6 +3,7 @@ import { useResidency } from '../../context/ResidencyContext';
 import { useIndianClock } from '../../hooks/useIndianClock';
 import { formatINR } from '../../utils/currencyUtils';
 import bookingService from '../../services/bookingService';
+import roomService from '../../services/roomService';
 import NewBookingModal from '../../components/bookings/NewBookingModal';
 import OccupiedRoomModal from '../../components/bookings/OccupiedRoomModal';
 import CheckoutConfirmationDialog from '../../components/bookings/CheckoutConfirmationDialog';
@@ -20,6 +21,26 @@ export function OwnerDashboard() {
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [checkoutReceiptData, setCheckoutReceiptData] = useState(null);
+
+  async function handleSetMaintenance(e, room) {
+    if (e) e.stopPropagation();
+    try {
+      await roomService.updateRoom(room.id, { status: 'maintenance' });
+      await refreshFloors();
+    } catch (err) {
+      console.error('Failed to update maintenance status', err);
+    }
+  }
+
+  async function handleReleaseMaintenance(e, room) {
+    if (e) e.stopPropagation();
+    try {
+      await roomService.updateRoom(room.id, { status: 'available' });
+      await refreshFloors();
+    } catch (err) {
+      console.error('Failed to release room from maintenance', err);
+    }
+  }
 
   useEffect(() => {
     bookingService.getTodayStats().then((data) => {
@@ -371,9 +392,18 @@ export function OwnerDashboard() {
                           </div>
                         </div>
                       ) : isMaintenance ? (
-                        <div className="bg-amber-50 rounded-xl p-2.5 mt-2 flex items-center gap-2 border border-amber-200/80">
-                          <span className="material-symbols-outlined text-amber-700 text-base">engineering</span>
-                          <span className="text-xs text-amber-800 font-bold font-['Inter']">Under Maintenance</span>
+                        <div className="bg-amber-50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-amber-200/80">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-amber-700 text-base">engineering</span>
+                            <span className="text-xs text-amber-800 font-bold font-['Inter']">Under Maintenance</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleReleaseMaintenance(e, room)}
+                            className="text-[10px] font-bold text-emerald-700 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
+                          >
+                            Release
+                          </button>
                         </div>
                       ) : (
                         <div className="bg-emerald-50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-emerald-200/80">
@@ -381,9 +411,16 @@ export function OwnerDashboard() {
                             <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
                             <span className="text-xs text-emerald-800 font-bold font-['Inter']">Vacant & Clean</span>
                           </div>
-                          <span className="text-[10px] text-emerald-700 font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
-                            Ready
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => handleSetMaintenance(e, room)}
+                              className="text-[10px] font-bold text-amber-800 bg-white hover:bg-amber-50 px-2 py-1 rounded-md border border-amber-200 transition-colors cursor-pointer shadow-2xs"
+                              title="Put room into maintenance"
+                            >
+                              Maintenance
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
