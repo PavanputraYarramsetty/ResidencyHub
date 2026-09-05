@@ -6,6 +6,7 @@ const {
   setCache,
   invalidateBookingsCache,
   invalidateCustomerSearchCache,
+  invalidateFloorsCache,
   TTL
 } = require('./cache.service');
 const { NotFoundError, BadRequestError, ConflictError } = require('../utils/errors');
@@ -106,6 +107,11 @@ class BookingService {
     if (!resolvedCustomerId && (phone || full_name)) {
       let existingCust = customers.find((c) => phone && c.phone === phone);
       if (existingCust) {
+        if (full_name) existingCust.full_name = full_name;
+        if (age) existingCust.age = age;
+        if (gender) existingCust.gender = gender;
+        if (address) existingCust.address = address;
+        if (aadhar_number) existingCust.aadhar_number = aadhar_number;
         resolvedCustomerId = existingCust.id;
       } else {
         const newCust = {
@@ -121,6 +127,16 @@ class BookingService {
         };
         customers.push(newCust);
         resolvedCustomerId = newCust.id;
+      }
+    } else if (resolvedCustomerId) {
+      let existingCust = customers.find((c) => c.id === resolvedCustomerId);
+      if (existingCust) {
+        if (full_name) existingCust.full_name = full_name;
+        if (phone) existingCust.phone = phone;
+        if (age) existingCust.age = age;
+        if (gender) existingCust.gender = gender;
+        if (address) existingCust.address = address;
+        if (aadhar_number) existingCust.aadhar_number = aadhar_number;
       }
     }
 
@@ -166,10 +182,8 @@ class BookingService {
 
     logger.success(`Booking created for room ${room.room_number}`);
     await invalidateBookingsCache(residencyId);
-
-    if (!customer_id && (phone || full_name)) {
-      await invalidateCustomerSearchCache(residencyId);
-    }
+    await invalidateFloorsCache(residencyId);
+    await invalidateCustomerSearchCache(residencyId);
 
     return {
       ...newBooking,
@@ -206,6 +220,7 @@ class BookingService {
     const cat = room ? categories.find((c) => c.id === room.category_id) : null;
 
     await invalidateBookingsCache(residencyId);
+    await invalidateFloorsCache(residencyId);
     logger.success(`Check-in recorded for booking ${id}`);
 
     return {
@@ -259,6 +274,7 @@ class BookingService {
     const cat = room ? categories.find((c) => c.id === room.category_id) : null;
 
     await invalidateBookingsCache(residencyId);
+    await invalidateFloorsCache(residencyId);
 
     logger.success(`Checkout completed — Room ${room?.room_number}: ${billableDays} day(s), ₹${totalAmount} (${durationHours}h stay)`);
 
@@ -286,6 +302,7 @@ class BookingService {
     if (room) room.status = 'available';
 
     await invalidateBookingsCache(residencyId);
+    await invalidateFloorsCache(residencyId);
     logger.success(`Booking ${id} cancelled`);
 
     return booking;
