@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../lib/api';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 
 const ResidencyContext = createContext(null);
@@ -90,7 +91,31 @@ export function ResidencyProvider({ children }) {
 
   // Realtime & Cross-Device Sync Listeners
   useEffect(() => {
-    // Local Cross-Tab Broadcast Channel (Same browser instance)
+    // 1. Supabase Global Realtime Broadcast Subscription (Multi-device, anywhere in the world)
+    let realtimeChannel = null;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        realtimeChannel = supabase
+          .channel('public:residency_live_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+            fetchFloors();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+            fetchFloors();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'floors' }, () => {
+            fetchFloors();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'room_categories' }, () => {
+            fetchCategories();
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('Supabase realtime init notice:', err);
+      }
+    }
+
+    // 2. Local Cross-Tab Broadcast Channel (Same browser instance)
     if (syncChannel) {
       const handleBroadcast = (event) => {
         if (event.data?.type === 'RESIDENCY_STRUCTURE_UPDATED') {
@@ -99,8 +124,15 @@ export function ResidencyProvider({ children }) {
         }
       };
       syncChannel.addEventListener('message', handleBroadcast);
-      return () => syncChannel.removeEventListener('message', handleBroadcast);
+      return () => {
+        syncChannel.removeEventListener('message', handleBroadcast);
+        if (realtimeChannel) supabase?.removeChannel(realtimeChannel);
+      };
     }
+
+    return () => {
+      if (realtimeChannel) supabase?.removeChannel(realtimeChannel);
+    };
   }, [fetchFloors, fetchCategories]);
 
 

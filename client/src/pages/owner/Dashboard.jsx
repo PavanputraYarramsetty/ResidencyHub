@@ -11,7 +11,7 @@ import InvoiceReceiptModal from '../../components/bookings/InvoiceReceiptModal';
 export function OwnerDashboard() {
   const { floors, refreshFloors } = useResidency();
   const { timeString, dateFull } = useIndianClock();
-  const [stats, setStats] = useState({ today_check_ins: 1, today_check_outs: 0, today_revenue: 1500 });
+  const [stats, setStats] = useState({ today_check_ins: 0, today_check_outs: 0, today_revenue: 0, total_cash: 0, total_upi: 0, total_due: 0 });
 
   // Modal States
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -29,10 +29,11 @@ export function OwnerDashboard() {
 
   // Compute live occupancy metrics
   const allRooms = floors.flatMap((f) => f.rooms || []);
-  const totalRooms = allRooms.length || 11;
-  const occupiedRooms = allRooms.filter((r) => r.status === 'occupied').length || 1;
-  const availableRooms = allRooms.filter((r) => r.status === 'available').length || 10;
-  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 9;
+  const totalRooms = allRooms.length;
+  const occupiedRooms = allRooms.filter((r) => r.status === 'occupied').length;
+  const maintenanceRooms = allRooms.filter((r) => r.status === 'maintenance').length;
+  const availableRooms = allRooms.filter((r) => r.status === 'available').length;
+  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
   function handleRoomClick(room) {
     setSelectedRoom(room);
@@ -76,7 +77,7 @@ export function OwnerDashboard() {
       {/* Primary Metric Stats Grid (4 Cards) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
         {/* Total Rooms */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between hover:shadow-md transition-all border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-slate-200/80">
           <div className="flex flex-col">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 font-['Inter']">
               Total Rooms
@@ -84,7 +85,7 @@ export function OwnerDashboard() {
             <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-slate-900">
               {totalRooms}
             </span>
-            <span className="text-xs text-slate-400 mt-1 font-['Inter']">Full property capacity</span>
+            <span className="text-xs text-slate-500 mt-1 font-['Inter'] font-medium">Full property capacity</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
             <span className="material-symbols-outlined text-2xl">bed</span>
@@ -92,55 +93,60 @@ export function OwnerDashboard() {
         </div>
 
         {/* Available */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between hover:shadow-md transition-all border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-emerald-100/90 bg-gradient-to-br from-white to-emerald-50/20">
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1 font-['Inter']">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-1 font-['Inter']">
               Available
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-emerald-600">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-emerald-700">
               {availableRooms}
             </span>
-            <span className="text-xs text-emerald-600/90 mt-1 flex items-center gap-1 font-['Inter']">
+            <span className="text-xs text-emerald-700 mt-1 flex items-center gap-1 font-['Inter'] font-medium">
               <span className="material-symbols-outlined text-xs">done_all</span> Ready for walk-ins
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shadow-xs">
             <span className="material-symbols-outlined text-2xl">check_circle</span>
           </div>
         </div>
 
         {/* Occupied */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between hover:shadow-md transition-all border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-rose-100/90 bg-gradient-to-br from-white to-rose-50/20">
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider mb-1 font-['Inter']">
+            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-1 font-['Inter']">
               Occupied
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-rose-600">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-rose-700">
               {occupiedRooms}
             </span>
-            <span className="text-xs text-rose-600/90 mt-1 flex items-center gap-1 font-['Inter']">
-              <span className="material-symbols-outlined text-xs">lock</span> {occupiedRooms} Active folio
+            <span className="text-xs text-rose-700 mt-1 flex items-center gap-1 font-['Inter'] font-medium">
+              <span className="material-symbols-outlined text-xs">lock</span>{' '}
+              {occupiedRooms === 0
+                ? 'No active stays'
+                : occupiedRooms === 1
+                ? '1 Active guest stay'
+                : `${occupiedRooms} Active guest stays`}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shadow-xs">
-            <span className="material-symbols-outlined text-2xl">error</span>
+          <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-center text-rose-700 shadow-xs">
+            <span className="material-symbols-outlined text-2xl">meeting_room</span>
           </div>
         </div>
 
         {/* Occupancy Rate */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between hover:shadow-md transition-all border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-purple-100/90 bg-gradient-to-br from-white to-purple-50/20">
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-purple-600 uppercase tracking-wider mb-1 font-['Inter']">
+            <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-1 font-['Inter']">
               Occupancy Rate
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-purple-600">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-purple-700">
               {occupancyRate}%
             </span>
-            <span className="text-xs text-slate-400 mt-1 flex items-center gap-1 font-['Inter']">
-              <span className="material-symbols-outlined text-xs text-emerald-500">trending_up</span> Stable pace
+            <span className="text-xs text-purple-700 mt-1 flex items-center gap-1 font-['Inter'] font-medium">
+              <span className="material-symbols-outlined text-xs">trending_up</span> {occupiedRooms > 0 ? 'Live occupancy' : 'Property vacant'}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-xs">
+          <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-200/80 flex items-center justify-center text-purple-700 shadow-xs">
             <span className="material-symbols-outlined text-2xl">insights</span>
           </div>
         </div>
@@ -236,7 +242,18 @@ export function OwnerDashboard() {
         </div>
 
         {/* Floors Loop */}
-        {floors.map((floor) => (
+        {floors.length === 0 ? (
+          <div className="bg-white rounded-2xl p-10 text-center border border-slate-200/80 shadow-xs flex flex-col items-center justify-center">
+            <span className="material-symbols-outlined text-blue-600 text-3xl mb-2">domain</span>
+            <h4 className="font-['Plus_Jakarta_Sans'] text-base font-bold text-slate-900 mb-1">
+              No Floors or Rooms Registered Yet
+            </h4>
+            <p className="font-['Inter'] text-xs text-slate-500 max-w-sm">
+              Use the Admin Panel to configure residency floors and room categories to start checking in guests.
+            </p>
+          </div>
+        ) : (
+          floors.map((floor) => (
           <div key={floor.id} className="flex flex-col gap-3.5">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
@@ -258,7 +275,7 @@ export function OwnerDashboard() {
                 const isOccupied = room.status === 'occupied';
                 const isMaintenance = room.status === 'maintenance';
                 const categoryName = room.room_categories?.name || 'Standard';
-                const basePrice = room.room_categories?.base_price || 1500;
+                const basePrice = room.room_categories?.base_price || room.room_categories?.price_per_24_hours || 1500;
                 const activeBooking = room.active_booking;
 
                 return (
@@ -326,7 +343,7 @@ export function OwnerDashboard() {
                       {/* Micro Tags */}
                       <div className="flex flex-wrap items-center gap-1.5 my-2.5">
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold font-['Inter']">
-                          Max {room.room_categories?.max_occupancy || 2}
+                          Max {room.room_categories?.max_occupancy || room.room_categories?.max_persons || 2}
                         </span>
                         {categoryName.toLowerCase().includes('ac') && (
                           <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold font-['Inter']">
@@ -375,7 +392,7 @@ export function OwnerDashboard() {
               })}
             </div>
           </div>
-        ))}
+        )))}
       </section>
 
       {/* Live Dispatch Activity Bottom Split */}
@@ -395,30 +412,27 @@ export function OwnerDashboard() {
             </div>
 
             <div className="divide-y divide-slate-100 text-xs font-['Inter']">
-              <div className="py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span className="text-slate-900 font-semibold">Room 101 Checked In</span>
-                  <span className="text-slate-500 hidden sm:inline">• Pavanputra Y. (AC Single)</span>
+              {occupiedRooms === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <p className="font-medium">No front desk activity recorded today.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">New guest check-ins and check-outs will appear here live.</p>
                 </div>
-                <span className="text-[11px] text-slate-600 font-mono font-medium">11:30 PM • ₹1,500</span>
-              </div>
-              <div className="py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-slate-900 font-semibold">Room 202 Cleaned & Released</span>
-                  <span className="text-slate-500 hidden sm:inline">• Housekeeper Ramesh</span>
-                </div>
-                <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">READY</span>
-              </div>
-              <div className="py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-slate-900 font-semibold">Night Audit Shift Handover</span>
-                  <span className="text-slate-500 hidden sm:inline">• Front Desk Owner</span>
-                </div>
-                <span className="text-[11px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md">SYSTEM OK</span>
-              </div>
+              ) : (
+                allRooms
+                  .filter((r) => r.status === 'occupied' && r.active_booking)
+                  .map((r) => (
+                    <div key={r.id} className="py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                        <span className="text-slate-900 font-semibold">Room {r.room_number} Checked In</span>
+                        <span className="text-slate-500 hidden sm:inline">• {r.active_booking.customers?.full_name || 'Guest'} ({r.room_categories?.name || 'Room'})</span>
+                      </div>
+                      <span className="text-[11px] text-slate-600 font-mono font-medium">
+                        {r.active_booking.check_in ? new Date(r.active_booking.check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'Active'} • {formatINR(r.active_booking.total_amount || 0)}
+                      </span>
+                    </div>
+                  ))
+              )}
             </div>
           </div>
 
@@ -437,22 +451,22 @@ export function OwnerDashboard() {
                 SHIFT REVENUE POOL
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                SETTLED
+                LIVE
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 mb-3.5 border border-slate-200/80">
-              <span className="text-xs text-slate-500 block font-['Inter']">Total Cash In Hand</span>
+              <span className="text-xs text-slate-500 block font-['Inter']">Total Shift Collections</span>
               <span className="font-['Plus_Jakarta_Sans'] text-2xl text-emerald-600 font-extrabold mt-0.5 block">
-                ₹1,500.00
+                {formatINR(stats.today_revenue || 0)}
               </span>
               <div className="mt-2.5 flex items-center justify-between text-xs text-slate-600 font-['Inter']">
-                <span>UPI / Direct Bank</span>
-                <span className="text-slate-900 font-semibold">₹0.00</span>
+                <span>Cash Drawer</span>
+                <span className="text-slate-900 font-semibold">{formatINR(stats.total_cash || 0)}</span>
               </div>
               <div className="mt-1 flex items-center justify-between text-xs text-slate-600 font-['Inter']">
-                <span>Pending Due</span>
-                <span className="text-slate-900 font-semibold">₹0.00</span>
+                <span>UPI / Digital</span>
+                <span className="text-slate-900 font-semibold">{formatINR(stats.total_upi || 0)}</span>
               </div>
             </div>
           </div>

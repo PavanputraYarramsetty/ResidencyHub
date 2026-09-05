@@ -19,7 +19,7 @@ export function AdminDashboard() {
   }, []);
 
   const allRooms = floors.flatMap((f) => f.rooms || []);
-  const totalRooms = allRooms.length || 11;
+  const totalRooms = allRooms.length;
   const occupiedRooms = allRooms.filter((r) => r.status === 'occupied').length;
   const availableRooms = allRooms.filter((r) => r.status === 'available').length;
 

@@ -21,10 +21,23 @@ export function OwnerRooms() {
   const [checkoutReceiptData, setCheckoutReceiptData] = useState(null);
 
   const allRooms = floors.flatMap((f) => f.rooms || []);
-  const totalCount = allRooms.length || 11;
+  const totalCount = allRooms.length;
   const availCount = allRooms.filter((r) => r.status === 'available').length;
   const occCount = allRooms.filter((r) => r.status === 'occupied').length;
   const maintCount = allRooms.filter((r) => r.status === 'maintenance').length;
+
+  const todayRunRate = allRooms
+    .filter((r) => r.status === 'occupied')
+    .reduce((sum, r) => sum + Number(r.room_categories?.price_per_24_hours || r.room_categories?.base_price || 0), 0);
+  const avgTariff =
+    totalCount > 0
+      ? Math.round(
+          allRooms.reduce(
+            (sum, r) => sum + Number(r.room_categories?.price_per_24_hours || r.room_categories?.base_price || 0),
+            0
+          ) / totalCount
+        )
+      : 0;
 
   const displayedFloors =
     selectedFloorId === 'all'
@@ -199,9 +212,9 @@ export function OwnerRooms() {
               TODAY'S RUN RATE
             </span>
             <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-slate-900 mt-0.5 block">
-              ₹1,500
+              {formatINR(todayRunRate)}
             </span>
-            <span className="text-xs text-slate-400 font-['Inter']">Avg Tariff ₹1,790</span>
+            <span className="text-xs text-slate-400 font-['Inter']">Avg Tariff {formatINR(avgTariff)}</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
             <span className="material-symbols-outlined text-2xl">payments</span>
@@ -259,7 +272,23 @@ export function OwnerRooms() {
 
       {/* Room Grid Display */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-        {displayedRooms.map((room) => {
+        {displayedRooms.length === 0 ? (
+          <div className="col-span-full bg-white rounded-2xl p-12 text-center border border-slate-200/80 shadow-xs flex flex-col items-center justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-3xl">hotel</span>
+            </div>
+            <h3 className="font-['Plus_Jakarta_Sans'] text-base font-bold text-slate-900 mb-1">
+              {floors.length === 0 ? 'No Floors or Rooms Configured Yet' : 'No Rooms Found in Selected View'}
+            </h3>
+            <p className="font-['Inter'] text-xs text-slate-500 max-w-md mb-4">
+              {floors.length === 0
+                ? 'Your residency is ready for setup. Start by adding your floors and room inventory.'
+                : 'Try selecting a different floor filter or changing status filters.'}
+            </p>
+          </div>
+        ) : (
+          displayedRooms.map((room) => {
+
           const isOccupied = room.status === 'occupied';
           const isMaintenance = room.status === 'maintenance';
           const categoryName = room.room_categories?.name || 'Standard';
@@ -401,7 +430,7 @@ export function OwnerRooms() {
               </div>
             </div>
           );
-        })}
+        }))}
 
         {/* Express Front-Desk Dispatch Tile */}
         <div className="relative rounded-2xl p-5 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-200/80 shadow-sm flex flex-col justify-between md:col-span-2 xl:col-span-2">

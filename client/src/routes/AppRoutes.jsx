@@ -13,7 +13,6 @@ import OwnerCustomers from '../pages/owner/Customers';
 import OwnerBookings from '../pages/owner/Bookings';
 import OwnerRevenue from '../pages/owner/Revenue';
 import OwnerStatistics from '../pages/owner/Statistics';
-import OwnerSettings from '../pages/owner/Settings';
 
 // Admin Pages
 import AdminDashboard from '../pages/admin/Dashboard';
@@ -43,7 +42,6 @@ export function AppRoutes() {
             <Route path="bookings" element={<OwnerBookings />} />
             <Route path="revenue" element={<OwnerRevenue />} />
             <Route path="statistics" element={<OwnerStatistics />} />
-            <Route path="settings" element={<OwnerSettings />} />
           </Route>
 
           {/* Admin Portal */}

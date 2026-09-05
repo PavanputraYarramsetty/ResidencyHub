@@ -26,7 +26,6 @@ export function Sidebar({ isOpen, onClose }) {
     { name: 'Bookings Ledger', path: '/owner/bookings', icon: Receipt },
     { name: 'Revenue Analytics', path: '/owner/revenue', icon: TrendingUp },
     { name: 'Statistics & Reports', path: '/owner/statistics', icon: BarChart3 },
-    { name: 'Settings', path: '/owner/settings', icon: Settings },
   ];
 
   const adminNavItems = [

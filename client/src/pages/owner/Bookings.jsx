@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useBookings from '../../hooks/useBookings';
+import { useResidency } from '../../context/ResidencyContext';
 import { formatINR } from '../../utils/currencyUtils';
 import { formatIndianDateTime } from '../../utils/dateUtils';
 import { exportToCSV } from '../../utils/exportUtils';
@@ -13,69 +14,31 @@ export function OwnerBookings() {
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
   const { bookings } = useBookings({});
+  const { floors } = useResidency();
 
-  // Canonical Seed dataset fallback if backend empty
-  const enrichedBookings = useMemo(() => {
-    if (bookings && bookings.length > 0) return bookings;
-    return [
-      {
-        id: 'bk-001',
-        customers: { full_name: 'Pavanputra Y.', phone: '+91 94910 08797' },
-        rooms: { room_number: '101', room_categories: { name: 'AC Single Deluxe' } },
-        check_in: new Date(Date.now() - 3600000).toISOString(),
-        check_out: null,
-        rate_per_day: 1500,
-        billing_units: 1,
-        total_amount: 1500,
-        payment_mode: 'UPI / GPay',
-        status: 'checked_in',
-      },
-      {
-        id: 'bk-002',
-        customers: { full_name: 'Ravi Kumar', phone: '+91 98480 12345' },
-        rooms: { room_number: '202', room_categories: { name: 'AC Double Standard' } },
-        check_in: new Date(Date.now() - 86400000).toISOString(),
-        check_out: new Date(Date.now() - 3600000).toISOString(),
-        rate_per_day: 2000,
-        billing_units: 1,
-        total_amount: 2000,
-        payment_mode: 'Cash Desk',
-        status: 'checked_out',
-      },
-      {
-        id: 'bk-003',
-        customers: { full_name: 'Suresh Reddy', phone: '+91 99887 76655' },
-        rooms: { room_number: '103', room_categories: { name: 'Non-AC Single' } },
-        check_in: new Date(Date.now() - 172800000).toISOString(),
-        check_out: new Date(Date.now() - 86400000).toISOString(),
-        rate_per_day: 800,
-        billing_units: 1,
-        total_amount: 800,
-        payment_mode: 'PhonePe',
-        status: 'checked_out',
-      },
-      {
-        id: 'bk-004',
-        customers: { full_name: 'Venkatesh M.', phone: '+91 91234 56789' },
-        rooms: { room_number: '203', room_categories: { name: 'AC Family Triple' } },
-        check_in: new Date(Date.now() - 259200000).toISOString(),
-        check_out: new Date(Date.now() - 86400000).toISOString(),
-        rate_per_day: 2500,
-        billing_units: 2,
-        total_amount: 5000,
-        payment_mode: 'POS Card',
-        status: 'checked_out',
-      },
-    ];
-  }, [bookings]);
+  const realBookings = useMemo(() => bookings || [], [bookings]);
+
+  // Dynamic KPI metrics
+  const activeStayCount = realBookings.filter((b) => b.status === 'checked_in').length;
+  const todayCollections = realBookings.reduce((sum, b) => sum + Number(b.total_amount || 0), 0);
+  const activeCycles = realBookings
+    .filter((b) => b.status === 'checked_in')
+    .reduce((sum, b) => sum + Number(b.billing_units || 1), 0);
+  const completedCount = realBookings.filter((b) => b.status === 'checked_out').length;
 
   // Filtered
-  const filteredBookings = enrichedBookings.filter((b) => {
+  const filteredBookings = realBookings.filter((b) => {
     // Status Filter
     if (statusFilter !== 'all') {
       if (statusFilter === 'checked_in' && b.status !== 'checked_in') return false;
       if (statusFilter === 'checked_out' && b.status !== 'checked_out') return false;
       if (statusFilter === 'cancelled' && b.status !== 'cancelled') return false;
+    }
+
+    // Floor Filter
+    if (selectedFloor !== 'all') {
+      const roomFloorId = b.rooms?.floor_id;
+      if (roomFloorId && String(roomFloorId) !== String(selectedFloor)) return false;
     }
 
     // Search
@@ -153,7 +116,7 @@ export function OwnerBookings() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              All Stays ({enrichedBookings.length})
+              All Stays ({realBookings.length})
             </button>
             <button
               type="button"
@@ -164,7 +127,7 @@ export function OwnerBookings() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Checked In ({enrichedBookings.filter((b) => b.status === 'checked_in').length})
+              Checked In ({realBookings.filter((b) => b.status === 'checked_in').length})
             </button>
             <button
               type="button"
@@ -175,7 +138,7 @@ export function OwnerBookings() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Checked Out ({enrichedBookings.filter((b) => b.status === 'checked_out').length})
+              Checked Out ({realBookings.filter((b) => b.status === 'checked_out').length})
             </button>
           </div>
 
@@ -207,9 +170,11 @@ export function OwnerBookings() {
               OCCUPIED ACTIVE FOIL
             </span>
             <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-rose-600">
-              1 Room
+              {activeStayCount} {activeStayCount === 1 ? 'Room' : 'Rooms'}
             </span>
-            <span className="text-xs text-slate-400 font-['Inter'] block mt-0.5">85% Current Load</span>
+            <span className="text-xs text-slate-400 font-['Inter'] block mt-0.5">
+              {activeStayCount > 0 ? 'Active Guest Stays' : 'No active occupancy'}
+            </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
             <span className="material-symbols-outlined">meeting_room</span>
@@ -222,10 +187,10 @@ export function OwnerBookings() {
               TODAY'S COLLECTIONS
             </span>
             <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-emerald-600">
-              ₹28,300
+              {formatINR(todayCollections)}
             </span>
             <span className="text-xs text-emerald-600 flex items-center gap-1 font-['Inter'] mt-0.5 font-medium">
-              <span className="material-symbols-outlined text-xs">trending_up</span> +14.2% vs yesterday
+              <span className="material-symbols-outlined text-xs">trending_up</span> Realtime Live
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -239,9 +204,9 @@ export function OwnerBookings() {
               ACTIVE 24H CYCLES
             </span>
             <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-blue-600">
-              18 Units
+              {activeCycles} {activeCycles === 1 ? 'Unit' : 'Units'}
             </span>
-            <span className="text-xs text-slate-400 font-['Inter'] block mt-0.5">3 Approaching expiry</span>
+            <span className="text-xs text-slate-400 font-['Inter'] block mt-0.5">24-hour cycles</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
             <span className="material-symbols-outlined">history_toggle_off</span>
@@ -251,12 +216,12 @@ export function OwnerBookings() {
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-sm">
           <div>
             <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5 font-['Inter']">
-              PENDING TURNOVER AUDIT
+              COMPLETED STAYS
             </span>
             <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-slate-900">
-              2 Stays
+              {completedCount} {completedCount === 1 ? 'Stay' : 'Stays'}
             </span>
-            <span className="text-xs text-slate-400 font-['Inter'] block mt-0.5">Inspection cleared</span>
+            <span className="text-xs text-slate-400 font-['Inter'] block mt-0.5">Checked out folios</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
             <span className="material-symbols-outlined">fact_check</span>
@@ -295,9 +260,11 @@ export function OwnerBookings() {
               className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition-all shadow-xs"
             >
               <option value="all">All Floors</option>
-              <option value="0">Ground Floor</option>
-              <option value="1">First Floor</option>
-              <option value="2">Second Floor</option>
+              {floors.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.floor_name || `Floor ${f.floor_number}`}
+                </option>
+              ))}
             </select>
           </div>
 
