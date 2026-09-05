@@ -4,8 +4,8 @@ import RoomCard from './RoomCard';
 export function RoomGrid({ rooms, onRoomClick }) {
   if (!rooms || rooms.length === 0) {
     return (
-      <div className="text-center py-12 px-4 rounded-xl border border-dashed border-gray-800 bg-[#161f33]/40">
-        <p className="text-gray-400 text-sm">No rooms found matching the selected criteria.</p>
+      <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+        <p className="text-slate-500 text-xs font-medium font-['Inter']">No rooms found matching the selected criteria.</p>
       </div>
     );
   }

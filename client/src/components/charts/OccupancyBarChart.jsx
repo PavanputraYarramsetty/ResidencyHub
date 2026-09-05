@@ -15,16 +15,17 @@ export function OccupancyBarChart({ data }) {
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
-          <XAxis dataKey="floor" stroke="#6b7280" fontSize={11} tickLine={false} />
-          <YAxis stroke="#6b7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+          <XAxis dataKey="floor" stroke="#64748b" fontSize={11} tickLine={false} />
+          <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#161f33',
-              borderColor: '#24314c',
-              borderRadius: '8px',
-              color: '#f9fafb',
+              backgroundColor: '#ffffff',
+              borderColor: '#e2e8f0',
+              borderRadius: '12px',
+              color: '#0f172a',
               fontSize: '12px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
             }}
             formatter={(val) => [formatINR(val), 'Floor Revenue']}
           />

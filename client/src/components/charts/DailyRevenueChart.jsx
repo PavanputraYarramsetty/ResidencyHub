@@ -21,10 +21,10 @@ export function DailyRevenueChart({ data }) {
               <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="date"
-            stroke="#6b7280"
+            stroke="#64748b"
             fontSize={11}
             tickLine={false}
             tickFormatter={(val) => {
@@ -34,7 +34,7 @@ export function DailyRevenueChart({ data }) {
             }}
           />
           <YAxis
-            stroke="#6b7280"
+            stroke="#64748b"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -42,11 +42,12 @@ export function DailyRevenueChart({ data }) {
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#161f33',
-              borderColor: '#24314c',
-              borderRadius: '8px',
-              color: '#f9fafb',
+              backgroundColor: '#ffffff',
+              borderColor: '#e2e8f0',
+              borderRadius: '12px',
+              color: '#0f172a',
               fontSize: '12px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
             }}
             formatter={(val) => [formatINR(val), 'Revenue']}
             labelFormatter={(label) => `Date: ${label}`}

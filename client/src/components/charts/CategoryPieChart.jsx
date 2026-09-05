@@ -33,17 +33,18 @@ export function CategoryPieChart({ data }) {
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: '#161f33',
-              borderColor: '#24314c',
-              borderRadius: '8px',
-              color: '#f9fafb',
+              backgroundColor: '#ffffff',
+              borderColor: '#e2e8f0',
+              borderRadius: '12px',
+              color: '#0f172a',
               fontSize: '12px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
             }}
             formatter={(val) => [formatINR(val), 'Revenue']}
           />
           <Legend
             verticalAlign="bottom"
-            wrapperStyle={{ fontSize: '11px', color: '#9ca3af', paddingTop: '10px' }}
+            wrapperStyle={{ fontSize: '11px', color: '#64748b', paddingTop: '10px' }}
           />
         </PieChart>
       </ResponsiveContainer>
