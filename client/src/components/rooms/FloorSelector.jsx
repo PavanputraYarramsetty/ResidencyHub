@@ -8,10 +8,10 @@ export function FloorSelector({ floors, selectedFloorId, onSelectFloor }) {
     <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
       <button
         onClick={() => onSelectFloor('all')}
-        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer ${
           selectedFloorId === 'all'
-            ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/25'
-            : 'bg-[#161f33] border-[#24314c] text-gray-300 hover:bg-[#1e2942] hover:text-white'
+            ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
+            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
         }`}
       >
         <Layers className="w-4 h-4" />
@@ -28,21 +28,21 @@ export function FloorSelector({ floors, selectedFloorId, onSelectFloor }) {
           <button
             key={floor.id}
             onClick={() => onSelectFloor(floor.id)}
-            className={`flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+            className={`flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer ${
               isSelected
-                ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/25'
-                : 'bg-[#161f33] border-[#24314c] text-gray-300 hover:bg-[#1e2942] hover:text-white'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
             }`}
           >
             <div className="text-left">
               <span className="block">{floor.floor_name}</span>
-              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-0.5">
-                <span className={isSelected ? 'text-white/90' : 'text-emerald-400'}>{available} Avail</span>
-                <span>•</span>
-                <span className={isSelected ? 'text-white/80' : 'text-red-400'}>{occupied} Occ</span>
+              <div className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium">
+                <span className={isSelected ? 'text-blue-100' : 'text-emerald-700'}>{available} Avail</span>
+                <span className={isSelected ? 'text-blue-200' : 'text-slate-300'}>•</span>
+                <span className={isSelected ? 'text-blue-100' : 'text-rose-700'}>{occupied} Occ</span>
               </div>
             </div>
-            <span className={`px-2 py-0.5 rounded text-[11px] font-mono ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}`}>
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
               {total}
             </span>
           </button>
@@ -53,3 +53,4 @@ export function FloorSelector({ floors, selectedFloorId, onSelectFloor }) {
 }
 
 export default FloorSelector;
+

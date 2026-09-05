@@ -43,11 +43,11 @@ export function AdminUsers() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-            <ShieldCheck className="w-6 h-6 text-purple-400" />
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5 font-['Plus_Jakarta_Sans']">
+            <ShieldCheck className="w-6 h-6 text-purple-600" />
             User & Role Management
           </h2>
-          <p className="text-xs text-gray-400 mt-0.5">Manage lodge staff accounts, access tiers, and security policies</p>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">Manage lodge staff accounts, access tiers, and security policies</p>
         </div>
 
         <Button variant="primary" onClick={() => setIsModalOpen(true)}>
@@ -56,11 +56,11 @@ export function AdminUsers() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden p-0 border-[#1f293d] bg-[#121929]">
+      <Card className="overflow-hidden p-0 border-slate-200 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-[#1f293d] bg-[#161f33] text-gray-400 font-semibold uppercase tracking-wider">
+              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
                 <th className="p-4">Staff Member</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Phone</th>
@@ -68,21 +68,21 @@ export function AdminUsers() {
                 <th className="p-4 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1f293d]">
+            <tbody className="divide-y divide-slate-100">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-[#161f33]/60 transition-colors">
+                <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-purple-600/20 text-purple-300 font-bold flex items-center justify-center text-xs">
+                      <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs border border-purple-200">
                         {u.full_name?.charAt(0)}
                       </div>
-                      <span className="font-bold text-gray-100">{u.full_name}</span>
+                      <span className="font-bold text-slate-800">{u.full_name}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-gray-300 font-mono">{u.email}</td>
-                  <td className="p-4 text-gray-300 font-mono">{u.phone}</td>
+                  <td className="p-4 text-slate-600 font-mono">{u.email}</td>
+                  <td className="p-4 text-slate-600 font-mono">{u.phone}</td>
                   <td className="p-4">
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
                       {u.role}
                     </span>
                   </td>
@@ -102,11 +102,11 @@ export function AdminUsers() {
           <Input label="Email Address *" type="email" placeholder="ramesh@sridevi.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input label="Phone Number" placeholder="+91 98480 00000" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Role Permission Tier</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Role Permission Tier</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-[#161f33] border border-[#24314c] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
             >
               <option value="owner">Owner / Business Head</option>
               <option value="receptionist">Receptionist / Front Desk</option>
@@ -115,7 +115,7 @@ export function AdminUsers() {
               <option value="admin">System Administrator</option>
             </select>
           </div>
-          <div className="pt-3 border-t border-[#1f293d] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary">Create User Account</Button>
           </div>

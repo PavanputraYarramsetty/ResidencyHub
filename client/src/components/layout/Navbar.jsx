@@ -1,23 +1,14 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useIndianClock } from '../../hooks/useIndianClock';
 import { useResidency } from '../../context/ResidencyContext';
 import BrandIcon from '../ui/BrandIcon';
+import { Calendar, Clock } from 'lucide-react';
 
 export function Navbar({ onToggleSidebar }) {
   const { profile, signOut, isAdmin } = useAuth();
   const { timeString, dateFull } = useIndianClock();
   const { refreshFloors } = useResidency();
-  const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
-
-  function handleSearch(e) {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/owner/rooms?search=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  }
 
   const initials = profile?.full_name
     ? profile.full_name
@@ -30,8 +21,8 @@ export function Navbar({ onToggleSidebar }) {
 
   return (
     <header className="sticky top-0 z-40 h-[64px] bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 lg:px-6 flex items-center justify-between shadow-xs">
-      {/* Left: Mobile Toggle + Brand + Live Operations Clock */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      {/* Left: Mobile Toggle + Brand Logo */}
+      <div className="flex items-center gap-3 sm:gap-4 min-w-[200px]">
         <button
           onClick={onToggleSidebar}
           className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
@@ -48,46 +39,39 @@ export function Navbar({ onToggleSidebar }) {
             <h1 className="text-sm font-bold tracking-tight text-slate-900 uppercase font-['Plus_Jakarta_Sans'] leading-tight">
               SRIDEVI RESIDENCY
             </h1>
-            <span className="text-[10px] text-slate-500 block font-['Inter'] leading-none mt-0.5">
+            <span className="text-[10px] text-slate-500 block font-['Inter'] leading-none mt-0.5 font-medium">
               Residency Management System
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Live Operations & Indian Clock Chip */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-xs">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-bold text-emerald-700 tracking-wider uppercase font-['Inter']">
-            LIVE OPERATIONS
-          </span>
-          <span className="text-slate-300 text-xs">|</span>
-          <span className="text-xs text-slate-700 font-medium font-['Inter']">{dateFull}</span>
-          <span className="text-slate-300 text-xs">|</span>
-          <span className="text-xs font-mono font-bold text-slate-900">{timeString}</span>
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700">
-            IST
-          </span>
+      {/* Center: Exactly Centered Highlighted Clock & Date */}
+      <div className="flex items-center justify-center flex-1 mx-2 sm:mx-4">
+        <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-slate-50 via-blue-50/50 to-slate-50 px-3.5 sm:px-5 py-1.5 rounded-xl border border-blue-200/70 shadow-xs">
+          {/* Date */}
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-700 font-semibold font-['Inter']">
+            <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <span>{dateFull}</span>
+          </div>
+
+          <span className="hidden md:inline text-slate-300 text-xs">|</span>
+
+          {/* Highlighted Clock */}
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <span className="text-base sm:text-lg font-extrabold font-['JetBrains_Mono'] tracking-tight text-slate-900 drop-shadow-2xs">
+              {timeString}
+            </span>
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-600 text-white shadow-2xs tracking-wider">
+              IST
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Center: Global Quick Search */}
-      <form onSubmit={handleSearch} className="flex-1 max-w-sm mx-4 hidden lg:block">
-        <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
-            search
-          </span>
-          <input
-            type="text"
-            placeholder="Quick search room, guest, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-slate-800 placeholder-slate-400 text-xs pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 focus:outline-none transition-all shadow-xs"
-          />
-        </div>
-      </form>
-
       {/* Right: Quick actions & User profile */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-[200px] justify-end">
         {/* Sync Refresh */}
         <button
           type="button"
@@ -128,3 +112,4 @@ export function Navbar({ onToggleSidebar }) {
 }
 
 export default Navbar;
+

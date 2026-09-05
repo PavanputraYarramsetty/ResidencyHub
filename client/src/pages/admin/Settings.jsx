@@ -8,18 +8,18 @@ export function AdminSettings() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-          <Building className="w-6 h-6 text-purple-400" />
+        <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5 font-['Plus_Jakarta_Sans']">
+          <Building className="w-6 h-6 text-purple-600" />
           Residency System Configuration
         </h2>
-        <p className="text-xs text-gray-400 mt-0.5">Master system settings, 24-hour stay rules, and Supabase integration readiness</p>
+        <p className="text-xs text-slate-500 mt-0.5 font-medium">Master system settings, 24-hour stay rules, and Supabase integration readiness</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Core Rules */}
-        <Card className="space-y-4">
-          <h4 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-400" /> Lodge Policy Engine
+        <Card className="space-y-4 border-slate-200">
+          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" /> Lodge Policy Engine
           </h4>
           <div className="space-y-3 text-xs">
             <Input label="Residency Name" value="SRIDEVI RESIDENCY" disabled />
@@ -30,9 +30,9 @@ export function AdminSettings() {
         </Card>
 
         {/* Database & Security */}
-        <Card className="space-y-4">
-          <h4 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-            <Database className="w-4 h-4 text-emerald-400" /> Database & Storage Specs
+        <Card className="space-y-4 border-slate-200">
+          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Database className="w-4 h-4 text-emerald-600" /> Database & Storage Specs
           </h4>
           <div className="space-y-3 text-xs">
             <Input label="Database Target" value="Supabase PostgreSQL (Ready for reconnect)" disabled />
@@ -47,3 +47,4 @@ export function AdminSettings() {
 }
 
 export default AdminSettings;
+

@@ -73,50 +73,6 @@ export function OwnerDashboard() {
 
   return (
     <div className="flex flex-col w-full gap-5 sm:gap-6">
-      {/* Top Operations Header Banner */}
-      <section className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 border border-slate-200/80">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-['Inter'] text-[11px] font-bold border border-blue-200/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Operations
-            </span>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-['Inter']">
-              LODGE DISPATCH TERMINAL
-            </span>
-          </div>
-          <h2 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            Dashboard Overview
-          </h2>
-          <p className="font-['Inter'] text-xs text-slate-500 mt-0.5">
-            Real-time occupancy tracking & front desk dispatch
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
-          <div className="bg-slate-50 px-4 py-2 rounded-xl flex items-center gap-2 shadow-xs border border-slate-200">
-            <span className="material-symbols-outlined text-blue-600 text-base">schedule</span>
-            <span className="text-xs text-slate-700 font-medium font-['Inter']">{dateFull}</span>
-            <span className="text-slate-300 text-xs">|</span>
-            <span className="font-['Plus_Jakarta_Sans'] text-sm text-slate-900 font-bold tracking-wider font-mono">
-              {timeString}
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-              IST
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleQuickCheckin}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-['Inter'] flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/20 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base">add_circle</span>
-            <span>Quick Check-in</span>
-          </button>
-        </div>
-      </section>
-
       {/* Primary Metric Stats Grid (4 Cards) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
         {/* Total Rooms */}
@@ -251,11 +207,11 @@ export function OwnerDashboard() {
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-blue-600 text-xl">grid_view</span>
               <h3 className="font-['Plus_Jakarta_Sans'] text-lg font-bold text-slate-900">
-                Room Status Grid
+                Room Status Overview
               </h3>
             </div>
             <p className="text-xs text-slate-500 mt-0.5 font-['Inter']">
-              Click any room to create a booking or perform guest checkout
+              Live occupancy status across all residency floors (Manage & book in Rooms Matrix)
             </p>
           </div>
 
@@ -268,6 +224,13 @@ export function OwnerDashboard() {
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
               <span className="text-xs font-semibold text-slate-700 font-['Inter']">Occupied ({occupiedRooms})</span>
+            </div>
+            <span className="text-slate-300 text-xs">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+              <span className="text-xs font-semibold text-slate-700 font-['Inter']">
+                Maintenance ({allRooms.filter((r) => r.status === 'maintenance').length})
+              </span>
             </div>
           </div>
         </div>
@@ -289,7 +252,7 @@ export function OwnerDashboard() {
               </div>
             </div>
 
-            {/* Rooms in Floor */}
+            {/* Rooms in Floor - Visual Status Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {(floor.rooms || []).map((room) => {
                 const isOccupied = room.status === 'occupied';
@@ -301,25 +264,24 @@ export function OwnerDashboard() {
                 return (
                   <div
                     key={room.id}
-                    onClick={() => handleRoomClick(room)}
-                    className={`bg-white rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 relative overflow-hidden group cursor-pointer border ${
+                    className={`bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden border ${
                       isOccupied
-                        ? 'border-rose-200'
+                        ? 'border-rose-200/90 bg-gradient-to-b from-white to-rose-50/20'
                         : isMaintenance
-                        ? 'border-amber-200'
-                        : 'border-slate-200/90 hover:border-blue-400'
+                        ? 'border-amber-200/90 bg-gradient-to-b from-white to-amber-50/20'
+                        : 'border-emerald-200/80 bg-gradient-to-b from-white to-emerald-50/20'
                     }`}
                   >
                     {/* Top Status Border Strip */}
                     <div
-                      className={`absolute top-0 left-0 right-0 h-1 ${
+                      className={`absolute top-0 left-0 right-0 h-1.5 ${
                         isOccupied ? 'bg-rose-500' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'
                       }`}
                     />
 
                     <div>
                       {/* Room Header & Status */}
-                      <div className="flex items-start justify-between mb-2.5">
+                      <div className="flex items-start justify-between mb-2.5 pt-0.5">
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase block font-['Inter']">
                             ROOM
@@ -329,16 +291,16 @@ export function OwnerDashboard() {
                           </span>
                         </div>
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-['Inter'] ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-['Inter'] shadow-2xs ${
                             isOccupied
                               ? 'bg-rose-50 text-rose-700 border border-rose-200'
                               : isMaintenance
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
                               : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           }`}
                         >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`w-2 h-2 rounded-full ${
                               isOccupied ? 'bg-rose-500 animate-pulse' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'
                             }`}
                           />
@@ -347,16 +309,16 @@ export function OwnerDashboard() {
                       </div>
 
                       {/* Specs & Pricing */}
-                      <div className="flex items-center justify-between py-1">
-                        <span className="text-sm font-bold text-slate-800 font-['Inter']">
+                      <div className="flex items-center justify-between py-1.5 border-y border-slate-100">
+                        <span className="text-xs font-bold text-slate-800 font-['Inter']">
                           {categoryName}
                         </span>
                         <div className="text-right">
-                          <span className="text-base font-extrabold text-emerald-600 font-['Plus_Jakarta_Sans']">
+                          <span className="text-sm font-extrabold text-slate-900 font-mono">
                             {formatINR(basePrice)}
                           </span>
-                          <span className="text-[10px] text-slate-400 block font-['Inter'] font-medium">
-                            / 24 HOURS
+                          <span className="text-[9px] text-slate-400 block font-['Inter'] font-semibold uppercase">
+                            / 24h
                           </span>
                         </div>
                       </div>
@@ -376,43 +338,35 @@ export function OwnerDashboard() {
                         </span>
                       </div>
 
-                      {/* Guest info or Clean status */}
+                      {/* Status Information Display */}
                       {isOccupied && activeBooking ? (
-                        <div className="bg-rose-50/60 rounded-xl p-2.5 my-2 border border-rose-100">
-                          <span className="text-[10px] font-bold text-rose-800 uppercase block font-['Inter']">
+                        <div className="bg-rose-50 rounded-xl p-2.5 mt-2 border border-rose-200/80">
+                          <span className="text-[9px] font-bold text-rose-700 uppercase block font-['Inter'] tracking-wider">
                             ACTIVE GUEST
                           </span>
                           <div className="flex items-center justify-between text-xs mt-0.5 font-['Inter']">
-                            <span className="text-slate-900 font-semibold truncate max-w-[130px]">
+                            <span className="text-slate-900 font-bold truncate max-w-[140px]">
                               {activeBooking.customers?.full_name || 'Guest'}
                             </span>
-                            <span className="text-emerald-700 text-[10px] font-bold bg-emerald-100 px-1.5 py-0.5 rounded-md">
-                              PAID
+                            <span className="text-rose-700 text-[10px] font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-rose-200">
+                              {activeBooking.check_in ? new Date(activeBooking.check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'In Stay'}
                             </span>
                           </div>
                         </div>
-                      ) : (
-                        <div className="bg-slate-50 rounded-xl p-2.5 my-2 flex items-center gap-2 border border-slate-100">
-                          <span className="material-symbols-outlined text-emerald-600 text-base">clean_hands</span>
-                          <span className="text-xs text-slate-600 font-medium font-['Inter']">Cleaned & Inspected</span>
+                      ) : isMaintenance ? (
+                        <div className="bg-amber-50 rounded-xl p-2.5 mt-2 flex items-center gap-2 border border-amber-200/80">
+                          <span className="material-symbols-outlined text-amber-700 text-base">engineering</span>
+                          <span className="text-xs text-amber-800 font-bold font-['Inter']">Under Maintenance</span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Action Button */}
-                    <div className="pt-2 mt-1">
-                      {isOccupied ? (
-                        <button
-                          type="button"
-                          className="w-full bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-transparent px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all font-['Inter'] shadow-xs"
-                        >
-                          <span className="material-symbols-outlined text-sm">logout</span>
-                          <span>Checkout Guest</span>
-                        </button>
                       ) : (
-                        <div className="w-full bg-slate-100 group-hover:bg-blue-600 text-slate-700 group-hover:text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all font-['Inter'] shadow-xs">
-                          <span>Click to Book</span>
-                          <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                        <div className="bg-emerald-50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-emerald-200/80">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                            <span className="text-xs text-emerald-800 font-bold font-['Inter']">Vacant & Clean</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-700 font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                            Ready
+                          </span>
                         </div>
                       )}
                     </div>

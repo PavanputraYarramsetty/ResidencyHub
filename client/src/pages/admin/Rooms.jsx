@@ -83,11 +83,11 @@ export function AdminRooms() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-            <BedDouble className="w-6 h-6 text-purple-400" />
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5 font-['Plus_Jakarta_Sans']">
+            <BedDouble className="w-6 h-6 text-purple-600" />
             Room Inventory
           </h2>
-          <p className="text-xs text-gray-400 mt-0.5">Configure room numbers, categories, pricing, and maintenance flags</p>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">Configure room numbers, categories, pricing, and maintenance flags</p>
         </div>
 
         <Button variant="primary" onClick={handleOpenAdd}>
@@ -97,11 +97,11 @@ export function AdminRooms() {
       </div>
 
       {/* Rooms Table */}
-      <Card className="overflow-hidden p-0 border-[#1f293d] bg-[#121929]">
+      <Card className="overflow-hidden p-0 border-slate-200 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-[#1f293d] bg-[#161f33] text-gray-400 font-semibold uppercase tracking-wider">
+              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
                 <th className="p-4">Room No.</th>
                 <th className="p-4">Floor</th>
                 <th className="p-4">Category</th>
@@ -111,20 +111,24 @@ export function AdminRooms() {
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1f293d]">
+            <tbody className="divide-y divide-slate-100">
               {allRooms.map((room) => {
                 const cat = room.room_categories || { name: 'Standard', base_price: 1500, max_occupancy: 2 };
                 return (
-                  <tr key={room.id} className="hover:bg-[#161f33]/60 transition-colors">
-                    <td className="p-4 font-bold font-mono text-white text-sm">{room.room_number}</td>
-                    <td className="p-4 text-gray-300">{room.floor_name}</td>
-                    <td className="p-4 font-medium text-gray-200">{cat.name}</td>
-                    <td className="p-4 font-bold text-emerald-400 font-mono">
+                  <tr key={room.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-4 font-bold font-mono text-slate-900 text-sm">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 font-mono font-extrabold text-slate-800">
+                        {room.room_number}
+                      </span>
+                    </td>
+                    <td className="p-4 text-slate-600 font-medium">{room.floor_name}</td>
+                    <td className="p-4 font-semibold text-slate-800">{cat.name}</td>
+                    <td className="p-4 font-extrabold text-emerald-700 font-mono">
                       {formatINR(cat.base_price || cat.price_per_24_hours || 1500)}
                     </td>
-                    <td className="p-4 text-gray-300">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <td className="p-4 text-slate-600">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-blue-600" />
                         {cat.max_occupancy || cat.max_persons || 2} Persons
                       </span>
                     </td>
@@ -135,13 +139,13 @@ export function AdminRooms() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenEdit(room)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(room.id, room.floor_id)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -155,7 +159,7 @@ export function AdminRooms() {
         </div>
       </Card>
 
-      {/* Add / Edit Room Modal (Matches Section 20) */}
+      {/* Add / Edit Room Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -164,11 +168,11 @@ export function AdminRooms() {
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Select Floor *</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Select Floor *</label>
             <select
               value={selectedFloorId}
               onChange={(e) => setSelectedFloorId(e.target.value)}
-              className="w-full bg-[#161f33] border border-[#24314c] rounded-lg px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
               required
             >
               {floors.map((f) => (
@@ -188,11 +192,11 @@ export function AdminRooms() {
           />
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Room Category *</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Room Category *</label>
             <select
               value={selectedCategoryId}
               onChange={(e) => setSelectedCategoryId(e.target.value)}
-              className="w-full bg-[#161f33] border border-[#24314c] rounded-lg px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
               required
             >
               {categories.map((c) => (
@@ -204,22 +208,22 @@ export function AdminRooms() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Operational Status</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Operational Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full bg-[#161f33] border border-[#24314c] rounded-lg px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
             >
               <option value="available">Available</option>
               <option value="maintenance">Under Maintenance</option>
               <option value="inactive">Inactive</option>
             </select>
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-slate-500 mt-1">
               Note: "Occupied" status is automatically assigned upon guest check-in (Rule 21).
             </p>
           </div>
 
-          <div className="pt-3 border-t border-[#1f293d] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>

@@ -72,58 +72,9 @@ export function Sidebar({ isOpen, onClose }) {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col">
-          {/* Brand Header */}
-          <div className="p-4 pb-2">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center p-1 text-blue-600 shadow-xs">
-                <span className="material-symbols-outlined text-xl">apartment</span>
-              </div>
-              <div>
-                <h1 className="font-['Plus_Jakarta_Sans'] text-base font-bold text-slate-900 tracking-tight uppercase leading-tight">
-                  SRIDEVI RESIDENCY
-                </h1>
-                <span className="font-['Inter'] text-[11px] text-slate-500 block">
-                  Residency Management System
-                </span>
-              </div>
-            </div>
-
-            {/* Badges */}
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded uppercase tracking-wider shadow-xs">
-                {isAdmin ? 'ADMIN PANEL' : 'OWNER PANEL'}
-              </span>
-              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded flex items-center gap-1">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                24/7 ACTIVE
-              </span>
-            </div>
-          </div>
-
-          {/* Profile Card Pill */}
-          <div className="px-3.5 py-2">
-            <div className="p-2.5 rounded-xl bg-slate-50 flex items-center gap-2.5 border border-slate-200/80 shadow-xs">
-              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-blue-600 font-['Plus_Jakarta_Sans'] font-bold text-xs">
-                {initials}
-              </div>
-              <div className="overflow-hidden flex-1">
-                <span className="font-['Inter'] text-xs font-semibold text-slate-900 truncate block">
-                  {profile?.full_name || 'Front Desk Owner'}
-                </span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">FRONT DESK</span>
-                  <span className="text-slate-300 text-[10px]">•</span>
-                  <span className="text-[10px] text-emerald-600 font-bold uppercase">
-                    {isAdmin ? 'ADMIN' : 'OWNER'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="flex flex-col pt-4">
           {/* Nav Links */}
-          <nav className="px-3 py-2 flex flex-col gap-1">
+          <nav className="px-3 py-1 flex flex-col gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (

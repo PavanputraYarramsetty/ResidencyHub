@@ -11,18 +11,18 @@ export function OwnerSettings() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-          <Settings className="w-6 h-6 text-blue-400" />
+        <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5 font-['Plus_Jakarta_Sans']">
+          <Settings className="w-6 h-6 text-blue-600" />
           Residency & Profile Settings
         </h2>
-        <p className="text-xs text-gray-400 mt-0.5">Configuration details for Sridevi Residency</p>
+        <p className="text-xs text-slate-500 mt-0.5 font-medium">Configuration details for Sridevi Residency</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Residency Details */}
-        <Card className="space-y-4">
-          <h4 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-            <Hotel className="w-4 h-4 text-blue-400" /> Residency Profile
+        <Card className="space-y-4 border-slate-200">
+          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Hotel className="w-4 h-4 text-blue-600" /> Residency Profile
           </h4>
           <div className="space-y-3 text-xs">
             <Input label="Residency Name" value="SRIDEVI RESIDENCY" disabled />
@@ -34,9 +34,9 @@ export function OwnerSettings() {
         </Card>
 
         {/* User Account */}
-        <Card className="space-y-4">
-          <h4 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-purple-400" /> Current Session Profile
+        <Card className="space-y-4 border-slate-200">
+          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-purple-600" /> Current Session Profile
           </h4>
           <div className="space-y-3 text-xs">
             <Input label="Full Name" value={profile?.full_name || 'Front Desk Owner'} disabled />
@@ -51,3 +51,4 @@ export function OwnerSettings() {
 }
 
 export default OwnerSettings;
+
