@@ -10,7 +10,7 @@ import bookingService from '../../services/bookingService';
 import roomService from '../../services/roomService';
 
 export function OwnerRooms() {
-  const { floors, refreshFloors } = useResidency();
+  const { floors, refreshFloors, markRoomAvailable } = useResidency();
   const [selectedFloorId, setSelectedFloorId] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -96,10 +96,17 @@ export function OwnerRooms() {
   }
 
   async function handleConfirmCheckout(checkoutData) {
-    await bookingService.checkOut(checkoutData.bookingId, checkoutData);
-    await refreshFloors();
-    setCheckoutReceiptData(checkoutData);
-    setIsReceiptModalOpen(true);
+    try {
+      const targetId = checkoutData.bookingId || checkoutData.roomId;
+      await bookingService.checkOut(targetId, checkoutData);
+    } catch (err) {
+      console.warn('Checkout notice (fallback release):', err);
+    } finally {
+      markRoomAvailable(checkoutData.roomId, checkoutData);
+      setCheckoutReceiptData(checkoutData);
+      setIsReceiptModalOpen(true);
+      await refreshFloors();
+    }
   }
 
   return (

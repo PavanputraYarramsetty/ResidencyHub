@@ -75,11 +75,17 @@ class FloorService {
             max_occupancy: 2,
           };
 
+          const activeBk = bookingByRoomId[room.id] || bookingByRoomId[room.room_number] || null;
+          const effectiveStatus = activeBk
+            ? 'occupied'
+            : (room.status === 'maintenance' ? 'maintenance' : 'available');
+
           return {
             ...room,
+            status: effectiveStatus,
             floor_name: floor.floor_name,
             room_categories: category,
-            active_booking: bookingByRoomId[room.id] || null,
+            active_booking: activeBk,
           };
         })
         .sort((a, b) => {

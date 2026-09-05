@@ -426,11 +426,20 @@ export function ResidencyProvider({ children }) {
 
   // Mark room available on checkout (Local optimistic + universal broadcast)
   function markRoomAvailable(roomId, checkoutSummary) {
+    const targetRoomNum = String(checkoutSummary?.roomNumber || checkoutSummary?.room_number || roomId || '').replace(/^r-/, '');
+
     setFloors((prevFloors) => {
       const updated = prevFloors.map((floor) => ({
         ...floor,
         rooms: (floor.rooms || []).map((room) => {
-          if (room.id === roomId) {
+          const roomNumStr = String(room.room_number || '').replace(/^r-/, '');
+          const matchesRoom =
+            (roomId && room.id === roomId) ||
+            (targetRoomNum && roomNumStr === targetRoomNum) ||
+            (targetRoomNum && roomNumStr.padStart(2, '0') === targetRoomNum.padStart(2, '0')) ||
+            (roomId && roomNumStr === String(roomId).replace(/^r-/, ''));
+
+          if (matchesRoom) {
             return {
               ...room,
               status: 'available',
