@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useResidency } from '../../context/ResidencyContext';
 import { formatINR } from '../../utils/currencyUtils';
+import { formatIndianTime } from '../../utils/dateUtils';
 import NewBookingModal from '../../components/bookings/NewBookingModal';
 import OccupiedRoomModal from '../../components/bookings/OccupiedRoomModal';
 import CheckoutConfirmationDialog from '../../components/bookings/CheckoutConfirmationDialog';
@@ -413,14 +414,16 @@ export function OwnerRooms() {
                   <div className="mt-3.5 p-2.5 rounded-xl bg-rose-50/70 flex items-center justify-between border border-rose-100">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-full bg-rose-200 flex items-center justify-center text-rose-800 font-bold text-xs shrink-0">
-                        {activeBooking.customers?.full_name?.[0] || 'G'}
+                        {(activeBooking.customers?.full_name || activeBooking.full_name || 'G')[0]}
                       </div>
                       <div className="min-w-0">
                         <span className="text-xs font-semibold text-slate-900 truncate block font-['Inter']">
-                          {activeBooking.customers?.full_name || 'Guest'}
+                          {activeBooking.customers?.full_name && activeBooking.customers.full_name !== 'Guest'
+                            ? activeBooking.customers.full_name
+                            : (activeBooking.full_name || room.full_name || 'Guest')}
                         </span>
                         <span className="text-[10px] text-slate-500 font-['Inter']">
-                          In at 11:30 pm
+                          In at {formatIndianTime(activeBooking.check_in || activeBooking.check_in_at || activeBooking.created_at)}
                         </span>
                       </div>
                     </div>

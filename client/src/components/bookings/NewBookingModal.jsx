@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import CustomerAutosuggest from '../customers/CustomerAutosuggest';
 import { formatINR } from '../../utils/currencyUtils';
-import { Upload, Shield } from 'lucide-react';
+import { Upload, Shield, FileText, Image, X } from 'lucide-react';
 
 export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
+  const aadhaarInputRef = useRef(null);
+  const photoInputRef = useRef(null);
+
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
@@ -19,9 +22,52 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [bookingDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
-  const [passportUploaded, setPassportUploaded] = useState(false);
+
+  const [aadhaarFile, setAadhaarFile] = useState(null);
+  const [aadhaarPreview, setAadhaarPreview] = useState(null);
+
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
   const [submitting, setSubmitting] = useState(false);
+
+  function handleAadhaarFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAadhaarFile(file);
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => setAadhaarPreview(reader.result);
+      reader.readAsDataURL(file);
+    } else {
+      setAadhaarPreview(file.name);
+    }
+  }
+
+  function handlePhotoFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => setPhotoPreview(reader.result);
+      reader.readAsDataURL(file);
+    } else {
+      setPhotoPreview(file.name);
+    }
+  }
+
+  function removeAadhaarFile() {
+    setAadhaarFile(null);
+    setAadhaarPreview(null);
+    if (aadhaarInputRef.current) aadhaarInputRef.current.value = '';
+  }
+
+  function removePhotoFile() {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  }
 
   if (!isOpen || !room) return null;
 
@@ -67,10 +113,10 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
         address: address.trim(),
         aadhar_number: aadharNumber.trim(),
         no_of_persons: Number(numberOfPersons),
-        no_of_days: Number(numberOfDays),
+        no_of_days: Math.max(1, Number(numberOfDays) || 1),
         booking_date: bookingDate,
         rate_per_day: ratePerDay,
-        total_amount: ratePerDay * Number(numberOfDays),
+        total_amount: ratePerDay * Math.max(1, Number(numberOfDays) || 1),
         advance_amount: advanceAmount ? Number(advanceAmount) : 0,
         payment_mode: paymentMode,
       });
@@ -197,63 +243,120 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
           />
         </div>
 
-        {/* Document Upload Simulations */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
-          <div>
-            <span className="block text-[11px] font-bold text-slate-600 mb-1.5 flex items-center gap-1 font-['Inter']">
-              <Shield className="w-3.5 h-3.5 text-blue-600" /> Aadhaar Card Verification
+        {/* Hidden System File Inputs */}
+        <input
+          type="file"
+          ref={aadhaarInputRef}
+          onChange={handleAadhaarFileChange}
+          accept="image/*,application/pdf"
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={photoInputRef}
+          onChange={handlePhotoFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+
+        {/* Real Document Upload & Media Preview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/90 font-['Inter']">
+          {/* Aadhaar Card Upload */}
+          <div className="space-y-1.5">
+            <span className="block text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-blue-600" /> Aadhaar Card / ID Upload
             </span>
-            <button
-              type="button"
-              onClick={() => setAadhaarUploaded(true)}
-              className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                aadhaarUploaded
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs'
-              }`}
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {aadhaarUploaded ? '✓ Aadhaar Attached' : 'Attach Document'}
-            </button>
+
+            {aadhaarFile ? (
+              <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  {aadhaarPreview && typeof aadhaarPreview === 'string' && aadhaarPreview.startsWith('data:image') ? (
+                    <img src={aadhaarPreview} alt="Aadhaar preview" className="w-10 h-10 object-cover rounded-lg border border-emerald-300 shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-emerald-700" />
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <p className="text-xs font-bold text-emerald-950 truncate">{aadhaarFile.name}</p>
+                    <p className="text-[10px] text-emerald-700 font-mono">{(aadhaarFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeAadhaarFile}
+                  className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-200/60 transition-colors cursor-pointer shrink-0"
+                  title="Remove file"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => aadhaarInputRef.current?.click()}
+                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-300 bg-white hover:bg-blue-50/50 hover:border-blue-300 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs group"
+              >
+                <Upload className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                <span>Upload Aadhaar File / Photo</span>
+              </button>
+            )}
           </div>
 
-          <div>
-            <span className="block text-[11px] font-bold text-slate-600 mb-1.5 flex items-center gap-1 font-['Inter']">
-              <Upload className="w-3.5 h-3.5 text-purple-600" /> Photo Verification
+          {/* Guest Photo / Passport Upload */}
+          <div className="space-y-1.5">
+            <span className="block text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <Upload className="w-4 h-4 text-purple-600" /> Guest Photo / Passport Upload
             </span>
-            <button
-              type="button"
-              onClick={() => setPassportUploaded(true)}
-              className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                passportUploaded
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs'
-              }`}
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {passportUploaded ? '✓ Photo Attached' : 'Attach Photo'}
-            </button>
+
+            {photoFile ? (
+              <div className="p-2 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  {photoPreview && typeof photoPreview === 'string' && photoPreview.startsWith('data:image') ? (
+                    <img src={photoPreview} alt="Photo preview" className="w-10 h-10 object-cover rounded-lg border border-purple-300 shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 border border-purple-200 flex items-center justify-center shrink-0">
+                      <Image className="w-5 h-5 text-purple-700" />
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <p className="text-xs font-bold text-purple-950 truncate">{photoFile.name}</p>
+                    <p className="text-[10px] text-purple-700 font-mono">{(photoFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={removePhotoFile}
+                  className="p-1 rounded-lg text-purple-700 hover:bg-purple-200/60 transition-colors cursor-pointer shrink-0"
+                  title="Remove photo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-300 bg-white hover:bg-purple-50/50 hover:border-purple-300 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs group"
+              >
+                <Upload className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                <span>Upload Passport / Photo</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* Stay Parameters */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 font-['Inter']">
-              No. of Days
-            </label>
-            <select
-              value={numberOfDays}
-              onChange={(e) => setNumberOfDays(Math.max(1, Number(e.target.value)))}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-xs font-bold"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 10, 14, 30].map((d) => (
-                <option key={d} value={d}>
-                  {d} Day{d > 1 ? 's' : ''} ({d * 24}h)
-                </option>
-              ))}
-            </select>
-          </div>
+          <Input
+            label="No. of Days *"
+            type="number"
+            min="1"
+            placeholder="1"
+            value={numberOfDays}
+            onChange={(e) => setNumberOfDays(e.target.value)}
+            required
+          />
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1 font-['Inter']">

@@ -130,17 +130,20 @@ async function recordCheckIn(req, res, next) {
 async function recordCheckOut(req, res, next) {
   try {
     const { id } = req.params;
-    const checkOutTime = req.body.check_out;
-    const { discount_percent, discount_amount, payment_mode, net_total } = req.body;
+    const checkOutTime = req.body.check_out || req.body.checkOut;
+    const { discount_percent, discount_amount, payment_mode, net_total, billableDays, billable_days, roomId } = req.body;
     const residency_id = req.profile?.residency_id || '00000000-0000-0000-0000-000000000001';
 
     const result = await bookingService.recordCheckOut({
       id,
+      roomId,
       checkOutTime,
-      discount_percent,
-      discount_amount,
-      payment_mode,
-      net_total,
+      discount_percent: discount_percent || req.body.discountPercent,
+      discount_amount: discount_amount || req.body.discountAmount,
+      payment_mode: payment_mode || req.body.paymentMode,
+      net_total: net_total !== undefined ? net_total : req.body.netTotal,
+      billableDays,
+      billable_days,
       residencyId: residency_id
     });
 

@@ -103,41 +103,37 @@ class BookingService {
     }
 
     let resolvedCustomerId = customer_id;
+    let targetCust = null;
 
-    if (!resolvedCustomerId && (phone || full_name)) {
-      let existingCust = customers.find((c) => phone && c.phone === phone);
-      if (existingCust) {
-        if (full_name) existingCust.full_name = full_name;
-        if (age) existingCust.age = age;
-        if (gender) existingCust.gender = gender;
-        if (address) existingCust.address = address;
-        if (aadhar_number) existingCust.aadhar_number = aadhar_number;
-        resolvedCustomerId = existingCust.id;
-      } else {
-        const newCust = {
-          id: generateUuid(),
-          residency_id: residencyId,
-          full_name: full_name || 'Guest',
-          phone: phone || '',
-          aadhar_number: aadhar_number || '',
-          age: age || null,
-          gender: gender || 'Male',
-          address: address || '',
-          created_at: new Date().toISOString(),
-        };
-        customers.push(newCust);
-        resolvedCustomerId = newCust.id;
-      }
-    } else if (resolvedCustomerId) {
-      let existingCust = customers.find((c) => c.id === resolvedCustomerId);
-      if (existingCust) {
-        if (full_name) existingCust.full_name = full_name;
-        if (phone) existingCust.phone = phone;
-        if (age) existingCust.age = age;
-        if (gender) existingCust.gender = gender;
-        if (address) existingCust.address = address;
-        if (aadhar_number) existingCust.aadhar_number = aadhar_number;
-      }
+    if (resolvedCustomerId) {
+      targetCust = customers.find((c) => c.id === resolvedCustomerId);
+    }
+    if (!targetCust && phone) {
+      targetCust = customers.find((c) => c.phone === phone);
+    }
+
+    if (targetCust) {
+      if (full_name) targetCust.full_name = full_name;
+      if (phone) targetCust.phone = phone;
+      if (age) targetCust.age = age;
+      if (gender) targetCust.gender = gender;
+      if (address) targetCust.address = address;
+      if (aadhar_number) targetCust.aadhar_number = aadhar_number;
+      resolvedCustomerId = targetCust.id;
+    } else {
+      targetCust = {
+        id: resolvedCustomerId || generateUuid(),
+        residency_id: residencyId,
+        full_name: full_name || 'Guest',
+        phone: phone || '',
+        aadhar_number: aadhar_number || '',
+        age: age || null,
+        gender: gender || 'Male',
+        address: address || '',
+        created_at: new Date().toISOString(),
+      };
+      customers.push(targetCust);
+      resolvedCustomerId = targetCust.id;
     }
 
     const room = rooms.find((r) => r.id === room_id || r.room_number === String(room_id).replace(/^r-/, ''));
@@ -160,8 +156,8 @@ class BookingService {
       residency_id: residencyId,
       room_id: room.id,
       customer_id: resolvedCustomerId,
-      full_name: full_name || (existingCust ? existingCust.full_name : 'Guest'),
-      phone: phone || (existingCust ? existingCust.phone : '—'),
+      full_name: targetCust.full_name || full_name || 'Guest',
+      phone: targetCust.phone || phone || '—',
       no_of_persons: no_of_persons || 1,
       no_of_days: effectiveDays,
       booking_date: effectiveDate,
@@ -173,6 +169,7 @@ class BookingService {
       status: 'checked_in',
       created_by: userId || null,
       created_at: new Date().toISOString(),
+      customers: targetCust,
     };
 
     const cust = customers.find((c) => c.id === resolvedCustomerId) || {

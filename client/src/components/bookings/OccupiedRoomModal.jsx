@@ -1,27 +1,56 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { formatINR } from '../../utils/currencyUtils';
 import { formatIndianDateTime } from '../../utils/dateUtils';
 import { calculateStayDuration } from '../../utils/billingUtils';
+import bookingService from '../../services/bookingService';
+import roomService from '../../services/roomService';
 import { User, Phone, Clock, LogOut } from 'lucide-react';
 
 export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) {
+  const [fetchedBooking, setFetchedBooking] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && room) {
+      setFetchedBooking(room.active_booking || null);
+      const bId = room.active_booking?.id;
+      if (bId) {
+        bookingService.getBookingById(bId)
+          .then((res) => {
+            if (res) setFetchedBooking(res);
+          })
+          .catch(() => {});
+      } else if (room.id) {
+        roomService.getRoom(room.id)
+          .then((res) => {
+            if (res?.active_booking) setFetchedBooking(res.active_booking);
+          })
+          .catch(() => {});
+      }
+    } else {
+      setFetchedBooking(null);
+    }
+  }, [isOpen, room]);
+
   if (!isOpen || !room) return null;
 
   const category = room.room_categories || { name: 'Standard', base_price: 1500, max_occupancy: 2 };
-  const booking = room.active_booking;
+  const booking = fetchedBooking || room.active_booking;
   const rawCustomer = booking?.customers;
+
   const customerName = (rawCustomer?.full_name && rawCustomer.full_name !== 'Guest')
     ? rawCustomer.full_name
     : (booking?.full_name && booking.full_name !== 'Guest'
       ? booking.full_name
-      : (room.full_name || 'Guest'));
-  const customerPhone = (rawCustomer?.phone && rawCustomer.phone !== '—')
+      : (room.full_name || room.customer_name || 'Guest'));
+
+  const customerPhone = (rawCustomer?.phone && rawCustomer.phone !== '—' && rawCustomer.phone !== '')
     ? rawCustomer.phone
-    : (booking?.phone && booking.phone !== '—'
+    : (booking?.phone && booking.phone !== '—' && booking.phone !== ''
       ? booking.phone
-      : (room.phone || '—'));
+      : (room.phone || room.customer_phone || '—'));
+
   const customerAddress = rawCustomer?.address || booking?.address || '';
   const ratePerDay = booking?.rate_per_day || category.base_price || 1500;
   const checkInTime = booking?.check_in || booking?.check_in_at || new Date().toISOString();

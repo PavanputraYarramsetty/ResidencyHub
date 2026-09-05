@@ -111,8 +111,126 @@ const categories = [
   },
 ];
 
-const floors = [];
-const rooms = [];
+const floors = [
+  {
+    id: '00000000-0000-0000-0000-000000000010',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_number: 0,
+    floor_name: 'Ground Floor',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000020',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_number: 1,
+    floor_name: 'Floor 1',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000030',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_number: 2,
+    floor_name: 'Floor 2',
+    created_at: new Date().toISOString(),
+  },
+];
+
+const rooms = [
+  // Ground Floor
+  {
+    id: '00000000-0000-0000-0000-000000000201',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000010',
+    room_number: '101',
+    category_id: '00000000-0000-0000-0000-000000000101', // AC Single
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000202',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000010',
+    room_number: '102',
+    category_id: '00000000-0000-0000-0000-000000000102', // AC Double
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000203',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000010',
+    room_number: '103',
+    category_id: '00000000-0000-0000-0000-000000000104', // Non-AC Single
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000204',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000010',
+    room_number: '104',
+    category_id: '00000000-0000-0000-0000-000000000105', // Non-AC Double
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  // Floor 1
+  {
+    id: '00000000-0000-0000-0000-000000000205',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000020',
+    room_number: '201',
+    category_id: '00000000-0000-0000-0000-000000000101', // AC Single
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000206',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000020',
+    room_number: '202',
+    category_id: '00000000-0000-0000-0000-000000000102', // AC Double
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000207',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000020',
+    room_number: '203',
+    category_id: '00000000-0000-0000-0000-000000000104', // Non-AC Single
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000208',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000020',
+    room_number: '204',
+    category_id: '00000000-0000-0000-0000-000000000105', // Non-AC Double
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  // Floor 2
+  {
+    id: '00000000-0000-0000-0000-000000000209',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000030',
+    room_number: '301',
+    category_id: '00000000-0000-0000-0000-000000000103', // AC Triple
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000210',
+    residency_id: DEFAULT_RESIDENCY_ID,
+    floor_id: '00000000-0000-0000-0000-000000000030',
+    room_number: '302',
+    category_id: '00000000-0000-0000-0000-000000000107', // Deluxe Suite
+    status: 'available',
+    created_at: new Date().toISOString(),
+  },
+];
+
 const customers = [];
 const bookings = [];
 const payments = [];

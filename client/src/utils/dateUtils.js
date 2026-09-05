@@ -66,3 +66,18 @@ export function formatIndianDate(isoString) {
     return String(isoString);
   }
 }
+
+export function formatIndianTime(isoString) {
+  if (!isoString) return '—';
+  try {
+    const d = new Date(isoString);
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).format(d);
+  } catch (e) {
+    return String(isoString);
+  }
+}

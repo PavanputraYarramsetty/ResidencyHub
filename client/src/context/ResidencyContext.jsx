@@ -25,11 +25,15 @@ const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChann
 export function ResidencyProvider({ children }) {
   const { isAuthenticated } = useAuth();
 
-  // Load saved floors from localStorage as initial offline fallback
   const [floors, setFloors] = useState(() => {
     const saved = localStorage.getItem('residency_floors');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) { /* ignore */ }
     }
     return [];
   });
