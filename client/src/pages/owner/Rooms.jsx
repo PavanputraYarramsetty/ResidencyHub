@@ -451,25 +451,14 @@ export function OwnerRooms() {
                     <span>Release Room / Ready to Occupy</span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleRoomClick(room)}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base">add_box</span>
-                      <span>Check-In</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleSetMaintenance(e, room)}
-                      className="px-2.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
-                      title="Put Room into Maintenance"
-                    >
-                      <span className="material-symbols-outlined text-base">engineering</span>
-                      <span>Maintenance</span>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRoomClick(room)}
+                    className="w-full flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">add_box</span>
+                    <span>Check-In</span>
+                  </button>
                 )}
               </div>
             </div>

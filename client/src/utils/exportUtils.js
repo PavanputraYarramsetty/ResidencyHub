@@ -32,24 +32,36 @@ export function printInvoiceDocument(invoiceId = 'invoice-receipt-print') {
     return;
   }
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+  let iframe = document.getElementById('print-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+  }
 
-  printWindow.document.write(`
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`
     <!DOCTYPE html>
     <html>
       <head>
         <title>Sridevi Residency - Invoice</title>
         <style>
-          body { font-family: system-ui, sans-serif; padding: 24px; color: #111; }
+          body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #111; font-size: 12px; }
           .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; }
-          .title { font-size: 24px; font-weight: bold; }
-          .subtitle { font-size: 14px; color: #666; }
+          .title { font-size: 20px; font-weight: bold; }
+          .subtitle { font-size: 13px; color: #666; }
           table { width: 100%; border-collapse: collapse; margin-top: 16px; }
           th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
           th { background-color: #f4f4f4; }
-          .total { font-weight: bold; font-size: 16px; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #888; }
+          .total { font-weight: bold; font-size: 15px; }
+          .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #888; }
         </style>
       </head>
       <body>
@@ -57,11 +69,10 @@ export function printInvoiceDocument(invoiceId = 'invoice-receipt-print') {
       </body>
     </html>
   `);
+  doc.close();
 
-  printWindow.document.close();
-  printWindow.focus();
   setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 350);
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 250);
 }

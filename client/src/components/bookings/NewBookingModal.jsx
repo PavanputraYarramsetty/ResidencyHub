@@ -17,6 +17,7 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [bookingDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
   const [passportUploaded, setPassportUploaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -27,12 +28,23 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
   const ratePerDay = category.base_price || room.base_price || 1500;
 
   function handleSelectCustomer(cust) {
+    setSelectedCustomer(cust);
     if (cust.full_name) setCustomerName(cust.full_name);
     if (cust.phone) setPhone(cust.phone);
     if (cust.age) setAge(cust.age);
     if (cust.gender) setGender(cust.gender);
     if (cust.address) setAddress(cust.address);
     if (cust.aadhar_number) setAadharNumber(cust.aadhar_number);
+  }
+
+  function handleClearCustomer() {
+    setSelectedCustomer(null);
+    setCustomerName('');
+    setPhone('');
+    setAge('');
+    setGender('Male');
+    setAddress('');
+    setAadharNumber('');
   }
 
   async function handleSubmit(e) {
@@ -46,6 +58,7 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
     try {
       await onConfirmBooking({
         room_id: room.id,
+        customer_id: selectedCustomer?.id || null,
         full_name: customerName.trim(),
         phone: phone.trim(),
         age: age ? Number(age) : null,
@@ -89,14 +102,45 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
           </div>
         </div>
 
+        {/* Selected Customer Banner */}
+        {selectedCustomer && (
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between font-['Inter']">
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+                ✓
+              </div>
+              <div>
+                <p className="text-xs font-bold text-emerald-900">
+                  Returning Guest Auto-Filled: {selectedCustomer.full_name}
+                </p>
+                <p className="text-[11px] text-emerald-700 font-mono">
+                  {selectedCustomer.phone} {selectedCustomer.address ? `• ${selectedCustomer.address}` : ''}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearCustomer}
+              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+            >
+              Clear / New Guest
+            </button>
+          </div>
+        )}
+
         {/* Customer Search & Name */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1 font-['Inter']">
-            Customer Name & Returning Guest Search *
+            Guest Name / Returning Guest Search *
           </label>
           <CustomerAutosuggest
             value={customerName}
-            onChange={setCustomerName}
+            onChange={(val) => {
+              setCustomerName(val);
+              if (selectedCustomer && val !== selectedCustomer.full_name) {
+                setSelectedCustomer(null);
+              }
+            }}
             onSelectCustomer={handleSelectCustomer}
           />
         </div>

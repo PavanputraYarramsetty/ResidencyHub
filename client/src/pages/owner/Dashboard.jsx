@@ -216,7 +216,7 @@ export function OwnerDashboard() {
             </span>
             <div className="flex items-baseline gap-2">
               <span className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-emerald-600">
-                {formatINR(stats.today_revenue || 1500)}
+                {formatINR(stats.today_revenue ?? 0)}
               </span>
               <span className="text-xs text-slate-500 font-['Inter']">Cash / UPI</span>
             </div>

@@ -39,11 +39,7 @@ class CustomerService {
    * Autosuggest customer search by phone or name with caching
    */
   async searchCustomers({ residencyId, query: q }) {
-    if (!q || q.length < 2) {
-      return [];
-    }
-
-    const normalized = q.trim().toLowerCase();
+    const normalized = (q || '').trim().toLowerCase();
     const cacheKey = `residency:${residencyId}:customers:search:${normalized}`;
 
     const cached = await getCache(cacheKey);
@@ -52,16 +48,21 @@ class CustomerService {
     }
 
     const matched = customers
-      .filter((c) =>
-        (!c.residency_id || c.residency_id === residencyId) &&
-        ((c.phone && c.phone.includes(normalized)) || (c.full_name && c.full_name.toLowerCase().includes(normalized)))
-      )
-      .slice(0, 10)
+      .filter((c) => {
+        if (c.residency_id && c.residency_id !== residencyId) return false;
+        if (!normalized) return true;
+        return (
+          (c.phone && c.phone.includes(normalized)) ||
+          (c.full_name && c.full_name.toLowerCase().includes(normalized))
+        );
+      })
+      .slice(0, 15)
       .map((c) => ({
         id: c.id,
         full_name: c.full_name,
         phone: c.phone,
         age: c.age,
+        gender: c.gender || 'Male',
         address: c.address,
         aadhar_number: c.aadhar_number,
       }));

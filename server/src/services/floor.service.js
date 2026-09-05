@@ -1,4 +1,4 @@
-const { floors, rooms, categories, bookings, generateUuid } = require('./datastore');
+const { floors, rooms, categories, bookings, customers, generateUuid } = require('./datastore');
 const { logger } = require('../utils/logger');
 const { getCache, setCache, invalidateFloorsCache, TTL } = require('./cache.service');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
@@ -22,6 +22,11 @@ class FloorService {
       .filter((f) => !f.residency_id || f.residency_id === residencyId)
       .sort((a, b) => a.floor_number - b.floor_number);
 
+    const customersMap = {};
+    customers.forEach((c) => {
+      customersMap[c.id] = c;
+    });
+
     // Active bookings map: room_id -> booking
     const activeBookings = bookings.filter((b) =>
       ['booked', 'checked_in'].includes(b.status) &&
@@ -30,7 +35,11 @@ class FloorService {
 
     const bookingByRoomId = {};
     activeBookings.forEach((b) => {
-      bookingByRoomId[b.room_id] = b;
+      const cust = customersMap[b.customer_id] || b.customers || null;
+      bookingByRoomId[b.room_id] = {
+        ...b,
+        customers: cust,
+      };
     });
 
     const categoriesMap = {};
