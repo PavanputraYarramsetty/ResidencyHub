@@ -17,6 +17,8 @@ router.get('/:id', getBooking);
 router.post('/', requireRole('owner', 'staff', 'admin'), createBooking);
 router.put('/:id/checkin', requireRole('owner', 'staff', 'admin'), recordCheckIn);
 router.post('/:id/checkin', requireRole('owner', 'staff', 'admin'), recordCheckIn);
+router.put('/:id/check-in', requireRole('owner', 'staff', 'admin'), recordCheckIn);
+router.post('/:id/check-in', requireRole('owner', 'staff', 'admin'), recordCheckIn);
 router.put('/:id/checkout', requireRole('owner', 'staff', 'admin'), recordCheckOut);
 router.post('/:id/checkout', requireRole('owner', 'staff', 'admin'), recordCheckOut);
 router.put('/:id/cancel', requireRole('owner', 'staff', 'admin'), cancelBooking);

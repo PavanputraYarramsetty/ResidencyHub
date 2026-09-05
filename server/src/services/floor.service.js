@@ -10,7 +10,7 @@ class FloorService {
    * Fetch all floors with nested rooms and computed occupancy statistics.
    */
   async getFloors(residencyId) {
-    // Live real-time floor & room status computation (bypass stale 60s cache)
+    const cacheKey = `residency:${residencyId}:floors`;
 
     // Filter floors for this residency
     const residencyFloors = floors

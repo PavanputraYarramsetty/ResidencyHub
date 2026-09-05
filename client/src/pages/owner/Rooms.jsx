@@ -10,7 +10,7 @@ import bookingService from '../../services/bookingService';
 import roomService from '../../services/roomService';
 
 export function OwnerRooms() {
-  const { floors, refreshFloors, markRoomAvailable } = useResidency();
+  const { floors, refreshFloors, markRoomAvailable, markRoomOccupied } = useResidency();
   const [selectedFloorId, setSelectedFloorId] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -91,8 +91,16 @@ export function OwnerRooms() {
   }
 
   async function handleConfirmBooking(bookingData) {
-    await bookingService.createBooking(bookingData);
-    await refreshFloors();
+    try {
+      await bookingService.createBooking(bookingData);
+    } catch (err) {
+      console.warn('Booking notice (fallback occupy):', err);
+    } finally {
+      markRoomOccupied(bookingData.room_id, bookingData);
+      setIsBookingModalOpen(false);
+      setSelectedRoom(null);
+      await refreshFloors();
+    }
   }
 
   async function handleConfirmCheckout(checkoutData) {

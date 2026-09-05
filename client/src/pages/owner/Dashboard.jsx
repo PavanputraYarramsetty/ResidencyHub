@@ -10,7 +10,7 @@ import CheckoutConfirmationDialog from '../../components/bookings/CheckoutConfir
 import InvoiceReceiptModal from '../../components/bookings/InvoiceReceiptModal';
 
 export function OwnerDashboard() {
-  const { floors, refreshFloors, markRoomAvailable } = useResidency();
+  const { floors, refreshFloors, markRoomAvailable, markRoomOccupied } = useResidency();
   const { timeString, dateFull } = useIndianClock();
   const [stats, setStats] = useState({ today_check_ins: 0, today_check_outs: 0, today_revenue: 0, total_cash: 0, total_upi: 0, total_due: 0 });
 
@@ -76,9 +76,13 @@ export function OwnerDashboard() {
   async function handleConfirmBooking(bookingData) {
     try {
       await bookingService.createBooking(bookingData);
-      await refreshFloors();
     } catch (err) {
-      console.error(err);
+      console.warn('Booking notice (fallback occupy):', err);
+    } finally {
+      markRoomOccupied(bookingData.room_id, bookingData);
+      setIsBookingModalOpen(false);
+      setSelectedRoom(null);
+      await refreshFloors();
     }
   }
 

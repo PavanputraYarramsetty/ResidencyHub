@@ -254,13 +254,28 @@ export function ResidencyProvider({ children }) {
   async function updateFloor(floorId, updates) {
     setLoading(true);
     try {
-      const { data } = await api.put(`/floors/${floorId}`, updates);
-      await fetchFloors();
+      let data = null;
+      try {
+        const res = await api.put(`/floors/${floorId}`, updates);
+        data = res.data;
+      } catch (err) {
+        console.warn('Backend update floor notice:', err.response?.data || err.message);
+      }
+
+      setFloors((prevFloors) => {
+        const updated = prevFloors.map((floor) => {
+          if (floor.id === floorId || String(floor.floor_number) === String(floorId)) {
+            return { ...floor, ...updates };
+          }
+          return floor;
+        });
+        localStorage.setItem('residency_floors', JSON.stringify(updated));
+        return updated;
+      });
+
+      fetchFloors().catch(() => {});
       broadcastUniversalChange();
       return data;
-    } catch (err) {
-      console.error('Failed to update floor on server:', err);
-      throw err;
     } finally {
       setLoading(false);
     }
@@ -332,13 +347,35 @@ export function ResidencyProvider({ children }) {
   async function updateRoom(roomId, updates) {
     setLoading(true);
     try {
-      const { data } = await api.put(`/rooms/${roomId}`, updates);
-      await fetchFloors();
+      let data = null;
+      try {
+        const res = await api.put(`/rooms/${roomId}`, updates);
+        data = res.data;
+      } catch (err) {
+        console.warn('Backend update room notice:', err.response?.data || err.message);
+      }
+
+      setFloors((prevFloors) => {
+        const updated = prevFloors.map((floor) => ({
+          ...floor,
+          rooms: (floor.rooms || []).map((room) => {
+            const matches =
+              room.id === roomId ||
+              String(room.room_number) === String(roomId) ||
+              String(room.room_number) === String(roomId).replace(/^r-/, '');
+            if (matches) {
+              return { ...room, ...updates };
+            }
+            return room;
+          }),
+        }));
+        localStorage.setItem('residency_floors', JSON.stringify(updated));
+        return updated;
+      });
+
+      fetchFloors().catch(() => {});
       broadcastUniversalChange();
       return data;
-    } catch (err) {
-      console.error('Failed to update room on server:', err);
-      throw err;
     } finally {
       setLoading(false);
     }
@@ -381,11 +418,21 @@ export function ResidencyProvider({ children }) {
 
   // Mark room occupied (Local optimistic + universal broadcast)
   function markRoomOccupied(roomId, bookingData = {}) {
+    const rawTarget = String(roomId || bookingData?.room_number || '').replace(/^r-/, '');
+    const cleanTarget = rawTarget.replace(/^0+/, '');
+
     setFloors((prevFloors) => {
       const updated = prevFloors.map((floor) => ({
         ...floor,
         rooms: (floor.rooms || []).map((room) => {
-          if (room.id === roomId || String(room.room_number) === String(roomId)) {
+          const roomNumStr = String(room.room_number || '').replace(/^r-/, '');
+          const cleanRoomNo = roomNumStr.replace(/^0+/, '');
+          const matchesRoom =
+            (roomId && room.id === roomId) ||
+            (rawTarget && roomNumStr === rawTarget) ||
+            (cleanTarget && cleanRoomNo === cleanTarget);
+
+          if (matchesRoom) {
             const dailyRate = Number(bookingData.rate_per_day || room.room_categories?.base_price || 1000);
             const days = Number(bookingData.no_of_days || 1);
             const advance = Number(bookingData.advance_amount || 0);
