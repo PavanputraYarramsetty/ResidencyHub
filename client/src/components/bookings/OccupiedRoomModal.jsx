@@ -26,10 +26,14 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
   const ratePerDay = booking?.rate_per_day || category.base_price || 1500;
   const checkInTime = booking?.check_in || booking?.check_in_at || new Date().toISOString();
 
+  const bookedDays = Math.max(1, Number(booking?.no_of_days || booking?.billable_days || 1));
+  const expectedStayHours = bookedDays * 24;
   const stay = calculateStayDuration(checkInTime, new Date());
-  const billAmount = stay.billingUnits * ratePerDay;
+  const effectiveUnits = Math.max(bookedDays, stay.billingUnits);
+  const billAmount = effectiveUnits * ratePerDay;
   const advance = Number(booking?.advance_amount || 0);
   const balanceDue = Math.max(0, billAmount - advance);
+  const isOvertime = stay.totalHours > expectedStayHours;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Occupied Stay — Room ${room.room_number}`} maxWidth="max-w-xl">
@@ -43,9 +47,14 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 uppercase">
                 {category.name}
               </span>
+              {isOvertime && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 uppercase">
+                  Overtime ({stay.durationText})
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 mt-1 font-['Inter']">
-              Active Stay • Checked in {formatIndianDateTime(checkInTime)}
+              Active Stay • Checked in {formatIndianDateTime(checkInTime)} ({bookedDays} Day{bookedDays > 1 ? 's' : ''} Booked)
             </p>
           </div>
 
@@ -92,8 +101,13 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
           </div>
 
           <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-            <span className="text-slate-600 font-medium">24-Hour Billing Units (Min 1 Stay)</span>
-            <span className="font-bold text-blue-600 font-mono">{stay.billingUnits} × 24h cycle</span>
+            <span className="text-slate-600 font-medium">Booked Stay Duration</span>
+            <span className="font-bold text-slate-900">{bookedDays} Day{bookedDays > 1 ? 's' : ''} ({expectedStayHours} hrs)</span>
+          </div>
+
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+            <span className="text-slate-600 font-medium">Current Billing Units</span>
+            <span className="font-bold text-blue-600 font-mono">{effectiveUnits} × 24h cycle</span>
           </div>
 
           <div className="flex items-center justify-between pb-2 border-b border-slate-200">
