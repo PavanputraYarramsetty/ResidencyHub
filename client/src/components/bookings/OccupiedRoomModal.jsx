@@ -14,10 +14,14 @@ export function OccupiedRoomModal({ isOpen, onClose, room, onTriggerCheckout }) 
   const rawCustomer = booking?.customers;
   const customerName = (rawCustomer?.full_name && rawCustomer.full_name !== 'Guest')
     ? rawCustomer.full_name
-    : (booking?.full_name || room.full_name || 'Guest');
+    : (booking?.full_name && booking.full_name !== 'Guest'
+      ? booking.full_name
+      : (room.full_name || 'Guest'));
   const customerPhone = (rawCustomer?.phone && rawCustomer.phone !== '—')
     ? rawCustomer.phone
-    : (booking?.phone || room.phone || '—');
+    : (booking?.phone && booking.phone !== '—'
+      ? booking.phone
+      : (room.phone || '—'));
   const customerAddress = rawCustomer?.address || booking?.address || '';
   const ratePerDay = booking?.rate_per_day || category.base_price || 1500;
   const checkInTime = booking?.check_in || booking?.check_in_at || new Date().toISOString();

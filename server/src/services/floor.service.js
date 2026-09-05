@@ -42,7 +42,7 @@ class FloorService {
         );
         if (found) {
           cust = found;
-        } else if (b.full_name || b.phone) {
+        } else {
           cust = {
             id: b.customer_id,
             full_name: b.full_name || 'Guest',
@@ -53,6 +53,8 @@ class FloorService {
 
       bookingByRoomId[b.room_id] = {
         ...b,
+        full_name: b.full_name || cust.full_name || 'Guest',
+        phone: b.phone || cust.phone || '—',
         customers: cust || { full_name: b.full_name || 'Guest', phone: b.phone || '—' },
       };
     });

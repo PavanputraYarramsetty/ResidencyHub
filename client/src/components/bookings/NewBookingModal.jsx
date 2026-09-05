@@ -14,6 +14,7 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
   const [address, setAddress] = useState('');
   const [aadharNumber, setAadharNumber] = useState('');
   const [numberOfPersons, setNumberOfPersons] = useState(1);
+  const [numberOfDays, setNumberOfDays] = useState(1);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [bookingDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -66,8 +67,10 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
         address: address.trim(),
         aadhar_number: aadharNumber.trim(),
         no_of_persons: Number(numberOfPersons),
+        no_of_days: Number(numberOfDays),
         booking_date: bookingDate,
         rate_per_day: ratePerDay,
+        total_amount: ratePerDay * Number(numberOfDays),
         advance_amount: advanceAmount ? Number(advanceAmount) : 0,
         payment_mode: paymentMode,
       });
@@ -234,7 +237,24 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
         </div>
 
         {/* Stay Parameters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1 font-['Inter']">
+              No. of Days
+            </label>
+            <select
+              value={numberOfDays}
+              onChange={(e) => setNumberOfDays(Math.max(1, Number(e.target.value)))}
+              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-xs font-bold"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 10, 14, 30].map((d) => (
+                <option key={d} value={d}>
+                  {d} Day{d > 1 ? 's' : ''} ({d * 24}h)
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1 font-['Inter']">
               No. of Persons
@@ -242,7 +262,7 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
             <select
               value={numberOfPersons}
               onChange={(e) => setNumberOfPersons(Number(e.target.value))}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-xs"
+              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-xs"
             >
               {Array.from({ length: category.max_occupancy || 4 }).map((_, i) => (
                 <option key={i + 1} value={i + 1}>
@@ -267,7 +287,7 @@ export function NewBookingModal({ isOpen, onClose, room, onConfirmBooking }) {
             <select
               value={paymentMode}
               onChange={(e) => setPaymentMode(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-xs"
+              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-xs"
             >
               <option value="UPI">UPI / GPay / PhonePe</option>
               <option value="Cash">Cash</option>

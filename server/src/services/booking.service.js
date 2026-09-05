@@ -160,6 +160,8 @@ class BookingService {
       residency_id: residencyId,
       room_id: room.id,
       customer_id: resolvedCustomerId,
+      full_name: full_name || (existingCust ? existingCust.full_name : 'Guest'),
+      phone: phone || (existingCust ? existingCust.phone : '—'),
       no_of_persons: no_of_persons || 1,
       no_of_days: effectiveDays,
       booking_date: effectiveDate,
@@ -173,14 +175,20 @@ class BookingService {
       created_at: new Date().toISOString(),
     };
 
+    const cust = customers.find((c) => c.id === resolvedCustomerId) || {
+      id: resolvedCustomerId,
+      full_name: newBooking.full_name,
+      phone: newBooking.phone,
+      address: address || '',
+    };
+    newBooking.customers = cust;
+
     bookings.push(newBooking);
 
     // Update room status to occupied
     room.status = 'occupied';
 
-    const cust = customers.find((c) => c.id === resolvedCustomerId) || null;
-
-    logger.success(`Booking created for room ${room.room_number}`);
+    logger.success(`Booking created for room ${room.room_number} for customer ${newBooking.full_name}`);
     await invalidateBookingsCache(residencyId);
     await invalidateFloorsCache(residencyId);
     await invalidateCustomerSearchCache(residencyId);
@@ -240,6 +248,8 @@ class BookingService {
     discount_amount,
     payment_mode,
     net_total,
+    billableDays,
+    billable_days,
     residencyId
   }) {
     const resolvedCheckOut = checkOutTime || new Date().toISOString();
@@ -253,15 +263,19 @@ class BookingService {
       throw new BadRequestError('Cannot check out before checking in');
     }
 
-    const { billableDays, totalAmount, durationHours } = computeCheckoutBilling(
+    const { billableDays: computedDays, totalAmount, durationHours } = computeCheckoutBilling(
       booking.check_in,
       resolvedCheckOut,
       booking.rate_per_day
     );
 
+    const finalBillableDays = (billable_days !== undefined || billableDays !== undefined)
+      ? Number(billable_days || billableDays)
+      : computedDays;
+
     booking.check_out = resolvedCheckOut;
-    booking.billable_days = billableDays;
-    booking.total_amount = net_total !== undefined ? net_total : totalAmount;
+    booking.billable_days = finalBillableDays;
+    booking.total_amount = net_total !== undefined ? net_total : calculateTotalAmount(booking.rate_per_day, finalBillableDays);
     booking.discount_percent = discount_percent || 0;
     booking.discount_amount = discount_amount || 0;
     booking.payment_mode = payment_mode || 'UPI';

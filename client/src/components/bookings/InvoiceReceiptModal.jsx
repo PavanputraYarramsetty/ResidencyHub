@@ -16,73 +16,111 @@ export function InvoiceReceiptModal({ isOpen, onClose, invoiceData }) {
   const checkIn = invoiceData.checkIn || invoiceData.check_in || invoiceData.created_at || new Date().toISOString();
   const checkOut = invoiceData.checkOut || invoiceData.check_out || new Date().toISOString();
   const billableDays = invoiceData.billableDays || invoiceData.billable_days || invoiceData.billing_units || 1;
-  const netTotal = invoiceData.netTotal !== undefined ? invoiceData.netTotal : (invoiceData.total_amount !== undefined ? invoiceData.total_amount : 0);
+
+  const grossAmount = invoiceData.grossAmount !== undefined
+    ? Number(invoiceData.grossAmount)
+    : (invoiceData.gross_amount !== undefined
+        ? Number(invoiceData.gross_amount)
+        : Number((invoiceData.rate_per_day || 1500) * billableDays));
+
+  const advanceAmount = invoiceData.advanceAmount !== undefined
+    ? Number(invoiceData.advanceAmount)
+    : (invoiceData.advance_amount !== undefined ? Number(invoiceData.advance_amount) : 0);
+
+  const discountPercent = Number(invoiceData.discountPercent || invoiceData.discount_percent || 0);
+  const discountAmount = invoiceData.discountAmount !== undefined
+    ? Number(invoiceData.discountAmount)
+    : (invoiceData.discount_amount !== undefined
+        ? Number(invoiceData.discount_amount)
+        : Math.round((grossAmount * discountPercent) / 100));
+
+  const netTotal = Math.max(0, grossAmount - discountAmount);
+  const balanceCollected = invoiceData.balanceCollected !== undefined
+    ? Number(invoiceData.balanceCollected)
+    : (invoiceData.balance_collected !== undefined
+        ? Number(invoiceData.balance_collected)
+        : Math.max(0, netTotal - advanceAmount));
+
   const paymentMode = invoiceData.paymentMode || invoiceData.payment_mode || 'UPI';
-  const discountPercent = invoiceData.discountPercent || invoiceData.discount_percent || 0;
-  const discountAmount = invoiceData.discountAmount || invoiceData.discount_amount || 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Checkout Invoice & Receipt" maxWidth="max-w-md">
       <div className="space-y-4 text-xs">
         {/* Printable invoice card */}
-        <div id="invoice-receipt-print" className="p-5 rounded-xl bg-white text-gray-900 shadow-inner">
+        <div id="invoice-receipt-print" className="p-5 rounded-xl bg-white text-gray-900 shadow-inner border border-slate-200">
           <div className="text-center border-b pb-3 mb-3">
-            <h3 className="text-base font-bold text-gray-900 tracking-wide">SRIDEVI RESIDENCY</h3>
-            <p className="text-[11px] text-gray-500">Official Guest Stay Tax Invoice</p>
+            <h3 className="text-base font-extrabold text-gray-900 tracking-wide font-['Plus_Jakarta_Sans']">SRIDEVI RESIDENCY</h3>
+            <p className="text-[11px] text-gray-500 font-['Inter']">Official Guest Stay Tax Invoice</p>
             <p className="text-[10px] text-gray-400 font-mono mt-0.5">Ph: +91 94910 08797 • Andhra Pradesh</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] mb-3 pb-2 border-b">
+          {/* Guest & Room Details */}
+          <div className="grid grid-cols-2 gap-2 text-[11px] mb-3 pb-3 border-b border-slate-200 font-['Inter']">
             <div>
-              <span className="text-gray-500 block">Guest Name:</span>
-              <span className="font-bold">{customerName}</span>
-              {phone !== '—' && <span className="block text-[10px] text-gray-400 font-mono">{phone}</span>}
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Guest Name</span>
+              <span className="font-bold text-slate-900 text-sm block">{customerName}</span>
+              {phone !== '—' && <span className="block text-[11px] text-slate-600 font-mono font-medium">{phone}</span>}
             </div>
             <div className="text-right">
-              <span className="text-gray-500 block">Room Number:</span>
-              <span className="font-bold font-mono">Room {roomNumber}</span>
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Room Assigned</span>
+              <span className="font-extrabold font-mono text-slate-900 text-sm block">Room {roomNumber}</span>
+              <span className="text-[10px] text-slate-500 font-medium">{categoryName}</span>
             </div>
-            <div>
-              <span className="text-gray-500 block">Check In:</span>
-              <span>{formatIndianDateTime(checkIn)}</span>
+            <div className="mt-1">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Check In</span>
+              <span className="text-slate-700 font-medium">{formatIndianDateTime(checkIn)}</span>
             </div>
-            <div className="text-right">
-              <span className="text-gray-500 block">Check Out:</span>
-              <span>{formatIndianDateTime(checkOut)}</span>
+            <div className="text-right mt-1">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Check Out</span>
+              <span className="text-slate-700 font-medium">{formatIndianDateTime(checkOut)}</span>
             </div>
           </div>
 
-          <table className="w-full text-left text-[11px] mb-3">
+          <table className="w-full text-left text-[11px] mb-3 font-['Inter']">
             <thead>
-              <tr className="border-b text-gray-500 font-semibold">
+              <tr className="border-b text-slate-500 font-semibold">
                 <th className="py-1">Description</th>
-                <th className="py-1 text-center">Stay Units</th>
-                <th className="py-1 text-right">Amount</th>
+                <th className="py-1 text-center">Stay Duration</th>
+                <th className="py-1 text-right">Gross Total</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b">
-                <td className="py-1.5">{categoryName}</td>
-                <td className="py-1.5 text-center font-mono">{billableDays} × 24h</td>
-                <td className="py-1.5 text-right font-mono font-bold">{formatINR(netTotal)}</td>
+              <tr className="border-b text-slate-800">
+                <td className="py-2 font-medium">{categoryName}</td>
+                <td className="py-2 text-center font-mono">{billableDays} × 24h cycle</td>
+                <td className="py-2 text-right font-mono font-bold text-slate-900">{formatINR(grossAmount)}</td>
               </tr>
             </tbody>
           </table>
 
-          <div className="space-y-1 text-right text-[11px]">
+          {/* Detailed Financial Breakdown */}
+          <div className="space-y-1.5 text-right text-[11px] font-['Inter'] pt-1">
+            <div className="flex justify-between text-slate-600 font-medium">
+              <span>Total Gross Amount:</span>
+              <span className="font-mono font-bold text-slate-900">{formatINR(grossAmount)}</span>
+            </div>
+
+            {advanceAmount > 0 && (
+              <div className="flex justify-between text-emerald-700 font-medium">
+                <span>Advance Paid:</span>
+                <span className="font-mono font-bold">- {formatINR(advanceAmount)}</span>
+              </div>
+            )}
+
             {discountPercent > 0 && (
               <div className="flex justify-between text-rose-600 font-medium">
                 <span>Discount ({discountPercent}%):</span>
-                <span>- {formatINR(discountAmount)}</span>
+                <span className="font-mono font-bold">- {formatINR(discountAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-xs pt-1 border-t">
-              <span>Net Total Paid ({paymentMode}):</span>
-              <span>{formatINR(netTotal)}</span>
+
+            <div className="flex justify-between font-bold text-xs pt-2 border-t border-slate-200">
+              <span className="text-slate-900">Remaining Balance Paid ({paymentMode}):</span>
+              <span className="text-emerald-700 font-extrabold font-mono text-sm">{formatINR(balanceCollected)}</span>
             </div>
           </div>
 
-          <div className="text-center text-[10px] text-gray-400 mt-4 pt-2 border-t">
+          <div className="text-center text-[10px] text-slate-400 mt-4 pt-2 border-t border-slate-100 font-['Inter']">
             Thank you for staying at Sridevi Residency! Have a safe journey.
           </div>
         </div>

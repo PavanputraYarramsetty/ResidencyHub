@@ -24,18 +24,25 @@ export function CheckoutConfirmationDialog({
   const rawCustomer = activeBooking?.customers;
   const customerName = (rawCustomer?.full_name && rawCustomer.full_name !== 'Guest')
     ? rawCustomer.full_name
-    : (activeBooking?.full_name || room.full_name || 'Guest');
+    : (activeBooking?.full_name && activeBooking.full_name !== 'Guest'
+      ? activeBooking.full_name
+      : (room.full_name || 'Guest'));
   const customerPhone = (rawCustomer?.phone && rawCustomer.phone !== '—')
     ? rawCustomer.phone
-    : (activeBooking?.phone || room.phone || '—');
+    : (activeBooking?.phone && activeBooking.phone !== '—'
+      ? activeBooking.phone
+      : (room.phone || '—'));
   const ratePerDay = activeBooking?.rate_per_day || room.room_categories?.base_price || 1500;
   const checkInTime = activeBooking?.check_in || activeBooking?.check_in_at || new Date().toISOString();
 
-  const stay = calculateStayDuration(checkInTime, new Date());
-  const calculatedUnits = stay.billingUnits;
-  const isOvertime = stay.totalHours > 24;
+  const bookedDays = Math.max(1, Number(activeBooking?.no_of_days || activeBooking?.billable_days || 1));
+  const expectedStayHours = bookedDays * 24;
 
-  const billableDays = (isOvertime && excuseOvertime) ? Math.max(1, calculatedUnits - 1) : calculatedUnits;
+  const stay = calculateStayDuration(checkInTime, new Date());
+  const calculatedUnits = Math.max(bookedDays, stay.billingUnits);
+  const isOvertime = stay.totalHours > expectedStayHours;
+
+  const billableDays = (isOvertime && excuseOvertime) ? bookedDays : calculatedUnits;
   const grossAmount = billableDays * ratePerDay;
   const advance = Number(activeBooking?.advance_amount || 0);
 
@@ -56,11 +63,14 @@ export function CheckoutConfirmationDialog({
         phone: customerPhone,
         checkIn: checkInTime,
         checkOut: new Date().toISOString(),
+        bookedDays,
         billableDays,
         grossAmount,
+        advanceAmount: advance,
         discountPercent: percent,
         discountAmount: discountRupees,
         netTotal,
+        balanceCollected: balanceToCollect,
         paymentMode,
       });
       onClose();
@@ -86,25 +96,60 @@ export function CheckoutConfirmationDialog({
           </div>
         </div>
 
-        {/* Overtime Waive Option */}
+        {/* Overtime Decision Prompt */}
         {isOvertime && (
-          <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-600" />
+          <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 font-bold shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
               <div>
-                <p className="text-xs font-bold text-blue-950">Overtime Detected ({stay.durationText})</p>
-                <p className="text-[11px] text-blue-700">Calculated stay exceeds 24 hours ({calculatedUnits} days billable).</p>
+                <h5 className="font-extrabold text-amber-950 text-xs font-['Plus_Jakarta_Sans']">
+                  Stay Duration Exceeds Booked {bookedDays} Day(s) ({stay.durationText} vs {expectedStayHours}h Expected)
+                </h5>
+                <p className="text-[11px] text-amber-800 font-['Inter']">
+                  Would you like to charge an extra day tariff for overtime, or excuse it?
+                </p>
               </div>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-blue-200 shadow-2xs hover:bg-blue-50 transition-colors">
-              <input
-                type="checkbox"
-                checked={excuseOvertime}
-                onChange={(e) => setExcuseOvertime(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span className="text-xs font-bold text-slate-800">Excuse Overtime</span>
-            </label>
+
+            <div className="grid grid-cols-2 gap-2 pt-1 font-['Inter']">
+              <button
+                type="button"
+                onClick={() => setExcuseOvertime(false)}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs ${
+                  !excuseOvertime
+                    ? 'bg-amber-600 text-white border-amber-700 font-bold shadow-xs ring-2 ring-amber-400/40'
+                    : 'bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold">Add Extra Day Tariff</span>
+                  {!excuseOvertime && <span className="text-[10px] bg-amber-700 px-1.5 py-0.5 rounded font-bold">Selected</span>}
+                </div>
+                <span className={`text-[11px] block ${!excuseOvertime ? 'text-amber-100 font-semibold' : 'text-slate-500'}`}>
+                  Bill for {calculatedUnits} Days ({formatINR(calculatedUnits * ratePerDay)})
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExcuseOvertime(true)}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs ${
+                  excuseOvertime
+                    ? 'bg-emerald-600 text-white border-emerald-700 font-bold shadow-xs ring-2 ring-emerald-400/40'
+                    : 'bg-white text-slate-700 border-amber-200 hover:bg-emerald-50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold">Excuse Overtime</span>
+                  {excuseOvertime && <span className="text-[10px] bg-emerald-700 px-1.5 py-0.5 rounded font-bold">Waived</span>}
+                </div>
+                <span className={`text-[11px] block ${excuseOvertime ? 'text-emerald-100 font-semibold' : 'text-slate-500'}`}>
+                  Bill for Booked {bookedDays} Day(s) ({formatINR(bookedDays * ratePerDay)})
+                </span>
+              </button>
+            </div>
           </div>
         )}
 

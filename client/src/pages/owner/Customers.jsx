@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
 import useCustomers from '../../hooks/useCustomers';
+import customerService from '../../services/customerService';
 import CustomerHistoryModal from '../../components/customers/CustomerHistoryModal';
-import { Users, Search, History } from 'lucide-react';
+import { Users, Search, History, Trash2 } from 'lucide-react';
 
 export function OwnerCustomers() {
-  const { customers, search, setSearch } = useCustomers();
+  const { customers, search, setSearch, refetch } = useCustomers();
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   function handleOpenCustomer(id) {
     setSelectedCustomerId(id);
     setIsProfileModalOpen(true);
+  }
+
+  async function handleDeleteCustomer(cust) {
+    if (!window.confirm(`Are you sure you want to delete customer "${cust.full_name}" (${cust.phone})?\nThis action will remove their profile from the residency directory.`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(cust.id);
+      await customerService.deleteCustomer(cust.id);
+      await refetch();
+    } catch (err) {
+      console.error('Failed to delete customer:', err);
+      alert('Failed to delete customer. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -83,14 +102,26 @@ export function OwnerCustomers() {
                     </td>
                     <td className="py-3.5 px-5 text-slate-500 max-w-xs truncate">{cust.address || '—'}</td>
                     <td className="py-3.5 px-5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCustomer(cust.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-                      >
-                        <History className="w-3.5 h-3.5" />
-                        <span>View History</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomer(cust.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                        >
+                          <History className="w-3.5 h-3.5" />
+                          <span>View History</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomer(cust)}
+                          disabled={deletingId === cust.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                          title="Delete Customer Profile"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{deletingId === cust.id ? 'Deleting...' : 'Delete'}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -104,6 +135,10 @@ export function OwnerCustomers() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         customerId={selectedCustomerId}
+        onDeleteCustomer={async (cust) => {
+          setIsProfileModalOpen(false);
+          await handleDeleteCustomer(cust);
+        }}
       />
     </div>
   );
