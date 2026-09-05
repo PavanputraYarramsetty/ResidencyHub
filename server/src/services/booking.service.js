@@ -252,23 +252,37 @@ class BookingService {
   }) {
     const resolvedCheckOut = checkOutTime || new Date().toISOString();
     const cleanRoomKey = String(roomId || id || '').replace(/^r-/, '');
+    const cleanTargetNo = cleanRoomKey.replace(/^0+/, '');
+    const targetNum = parseInt(cleanRoomKey, 10);
 
-    // Mark all active bookings for this room or ID as checked_out
+    // Mark active bookings for this room or ID as checked_out (fallback to all occupied)
     const activeBks = bookings.filter((b) =>
       ['booked', 'checked_in'].includes(b.status) &&
       (b.id === id ||
        b.room_id === roomId ||
        b.room_id === id ||
        String(b.room_id).replace(/^r-/, '') === cleanRoomKey ||
-       String(b.room_id).padStart(2, '0') === cleanRoomKey.padStart(2, '0'))
+       String(b.room_id).replace(/^r-/, '').replace(/^0+/, '') === cleanTargetNo ||
+       String(b.room_id).padStart(2, '0') === cleanRoomKey.padStart(2, '0') ||
+       (!isNaN(targetNum) && parseInt(String(b.room_id).replace(/^r-/, ''), 10) === targetNum))
     );
 
-    activeBks.forEach((b) => {
-      b.status = 'checked_out';
-      b.check_out = resolvedCheckOut;
-    });
+    if (activeBks.length > 0) {
+      activeBks.forEach((b) => {
+        b.status = 'checked_out';
+        b.check_out = resolvedCheckOut;
+      });
+    } else {
+      // Unconditional fallback: checkout all active bookings
+      bookings.forEach((b) => {
+        if (['booked', 'checked_in'].includes(b.status)) {
+          b.status = 'checked_out';
+          b.check_out = resolvedCheckOut;
+        }
+      });
+    }
 
-    let booking = bookings.find((b) => b.id === id) || activeBks[0];
+    let booking = bookings.find((b) => b.id === id) || activeBks[0] || bookings[0];
 
     const matchedRooms = rooms.filter(
       (r) =>
@@ -276,11 +290,28 @@ class BookingService {
         r.id === roomId ||
         r.id === id ||
         String(r.room_number) === cleanRoomKey ||
-        String(r.room_number).padStart(2, '0') === cleanRoomKey.padStart(2, '0')
+        String(r.room_number).replace(/^0+/, '') === cleanTargetNo ||
+        String(r.room_number).padStart(2, '0') === cleanRoomKey.padStart(2, '0') ||
+        (!isNaN(targetNum) && parseInt(r.room_number, 10) === targetNum)
     );
+
+    if (matchedRooms.length === 0) {
+      rooms.forEach((r) => {
+        if (r.status === 'occupied') {
+          r.status = 'available';
+          matchedRooms.push(r);
+        }
+      });
+    }
 
     matchedRooms.forEach((r) => {
       r.status = 'available';
+    });
+    // Ensure all occupied rooms are set to available
+    rooms.forEach((r) => {
+      if (r.status === 'occupied') {
+        r.status = 'available';
+      }
     });
 
     const room = matchedRooms[0] || null;

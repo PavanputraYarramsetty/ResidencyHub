@@ -103,8 +103,9 @@ export function OwnerRooms() {
       console.warn('Checkout notice (fallback release):', err);
     } finally {
       markRoomAvailable(checkoutData.roomId, checkoutData);
-      setCheckoutReceiptData(checkoutData);
-      setIsReceiptModalOpen(true);
+      setIsOccupiedModalOpen(false);
+      setIsCheckoutDialogOpen(false);
+      setSelectedRoom(null);
       await refreshFloors();
     }
   }

@@ -10,12 +10,7 @@ class FloorService {
    * Fetch all floors with nested rooms and computed occupancy statistics.
    */
   async getFloors(residencyId) {
-    const cacheKey = `residency:${residencyId}:floors`;
-
-    const cachedFloors = await getCache(cacheKey);
-    if (cachedFloors) {
-      return cachedFloors;
-    }
+    // Live real-time floor & room status computation (bypass stale 60s cache)
 
     // Filter floors for this residency
     const residencyFloors = floors
@@ -75,10 +70,14 @@ class FloorService {
             max_occupancy: 2,
           };
 
-          const activeBk = bookingByRoomId[room.id] || bookingByRoomId[room.room_number] || null;
-          const effectiveStatus = activeBk
-            ? 'occupied'
-            : (room.status === 'maintenance' ? 'maintenance' : 'available');
+          const rawBk = bookingByRoomId[room.id] || bookingByRoomId[room.room_number] || null;
+          const isAvailable = room.status === 'available' || !rawBk;
+          const isMaintenance = room.status === 'maintenance';
+
+          const effectiveStatus = isMaintenance
+            ? 'maintenance'
+            : (isAvailable ? 'available' : 'occupied');
+          const activeBk = effectiveStatus === 'occupied' ? rawBk : null;
 
           return {
             ...room,

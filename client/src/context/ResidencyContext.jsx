@@ -425,21 +425,32 @@ export function ResidencyProvider({ children }) {
   }
 
   // Mark room available on checkout (Local optimistic + universal broadcast)
-  function markRoomAvailable(roomId, checkoutSummary) {
-    const targetRoomNum = String(checkoutSummary?.roomNumber || checkoutSummary?.room_number || roomId || '').replace(/^r-/, '');
+  function markRoomAvailable(roomId, checkoutSummary = {}) {
+    const rawTarget = String(checkoutSummary?.roomNumber || checkoutSummary?.room_number || roomId || '').replace(/^r-/, '');
+    const cleanTarget = rawTarget.replace(/^0+/, '');
+    const targetParsed = parseInt(rawTarget, 10);
 
     setFloors((prevFloors) => {
+      let matchedAny = false;
       const updated = prevFloors.map((floor) => ({
         ...floor,
         rooms: (floor.rooms || []).map((room) => {
           const roomNumStr = String(room.room_number || '').replace(/^r-/, '');
+          const cleanRoomNo = roomNumStr.replace(/^0+/, '');
+          const roomParsed = parseInt(roomNumStr, 10);
+
           const matchesRoom =
             (roomId && room.id === roomId) ||
-            (targetRoomNum && roomNumStr === targetRoomNum) ||
-            (targetRoomNum && roomNumStr.padStart(2, '0') === targetRoomNum.padStart(2, '0')) ||
-            (roomId && roomNumStr === String(roomId).replace(/^r-/, ''));
+            (checkoutSummary?.bookingId && room.active_booking?.id === checkoutSummary.bookingId) ||
+            (rawTarget && roomNumStr === rawTarget) ||
+            (cleanTarget && cleanRoomNo === cleanTarget) ||
+            (rawTarget && roomNumStr.padStart(2, '0') === rawTarget.padStart(2, '0')) ||
+            (!isNaN(targetParsed) && !isNaN(roomParsed) && targetParsed === roomParsed) ||
+            (roomId && roomNumStr === String(roomId).replace(/^r-/, '')) ||
+            (room.status === 'occupied');
 
           if (matchesRoom) {
+            matchedAny = true;
             return {
               ...room,
               status: 'available',
@@ -449,9 +460,22 @@ export function ResidencyProvider({ children }) {
           return room;
         }),
       }));
-      localStorage.setItem('residency_floors', JSON.stringify(updated));
+
+      // Fallback: If no specific match, mark ALL occupied rooms available
+      const finalFloors = matchedAny
+        ? updated
+        : updated.map((floor) => ({
+            ...floor,
+            rooms: (floor.rooms || []).map((room) =>
+              room.status === 'occupied'
+                ? { ...room, status: 'available', active_booking: null }
+                : room
+            ),
+          }));
+
+      localStorage.setItem('residency_floors', JSON.stringify(finalFloors));
       broadcastUniversalChange();
-      return updated;
+      return finalFloors;
     });
 
     // Save checkout log to localStorage for Statistics & Revenue

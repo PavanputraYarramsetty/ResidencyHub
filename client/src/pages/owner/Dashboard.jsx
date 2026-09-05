@@ -90,8 +90,9 @@ export function OwnerDashboard() {
       console.warn('Checkout notice:', err);
     } finally {
       markRoomAvailable(checkoutData.roomId, checkoutData);
-      setCheckoutReceiptData(checkoutData);
-      setIsReceiptModalOpen(true);
+      setIsOccupiedModalOpen(false);
+      setIsCheckoutDialogOpen(false);
+      setSelectedRoom(null);
       await refreshFloors();
     }
   }
