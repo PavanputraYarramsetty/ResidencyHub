@@ -27,19 +27,33 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if local role saved
-    const savedDemoRole = localStorage.getItem('demo_role') || 'owner';
-    const demoProf = DEMO_PROFILES[savedDemoRole] || DEMO_PROFILES.owner;
-    setUser({ id: demoProf.id, email: `${savedDemoRole}@sridevi.com` });
-    setProfile(demoProf);
-    setSession({ access_token: `mock-token-${savedDemoRole}`, user: demoProf });
+    // Only restore session if user previously logged in
+    const savedDemoRole = localStorage.getItem('demo_role');
+    if (savedDemoRole && DEMO_PROFILES[savedDemoRole]) {
+      const demoProf = DEMO_PROFILES[savedDemoRole];
+      setUser({ id: demoProf.id, email: `${savedDemoRole}@sridevi.com` });
+      setProfile(demoProf);
+      setSession({ access_token: `mock-token-${savedDemoRole}`, user: demoProf });
+    }
+    // If no saved role, user stays null (unauthenticated) → redirected to /login
     setLoading(false);
   }, []);
 
+  // Valid login credentials
+  const VALID_CREDENTIALS = {
+    'owner@sridevi.com': { password: 'Owner@123', role: 'owner' },
+    'admin@sridevi.com': { password: 'Admin@123', role: 'admin' },
+  };
+
   async function signIn(email, password) {
     const cleanEmail = (email || '').trim().toLowerCase();
-    const role = cleanEmail.includes('admin') ? 'admin' : 'owner';
-    return loginAsDemo(role);
+    const cred = VALID_CREDENTIALS[cleanEmail];
+
+    if (!cred || cred.password !== password) {
+      throw new Error('Invalid email or password');
+    }
+
+    return loginAsDemo(cred.role);
   }
 
   function loginAsDemo(role = 'owner') {

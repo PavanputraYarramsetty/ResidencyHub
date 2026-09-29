@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import BrandIcon from '../../components/ui/BrandIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 
 export function Login() {
-  const [email, setEmail] = useState('owner@sridevi.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const { signIn, loginAsDemo } = useAuth();
+  const { signIn, isAuthenticated, profile, loading } = useAuth();
   const navigate = useNavigate();
+
+  // If already logged in, redirect to appropriate dashboard
+  if (!loading && isAuthenticated) {
+    const target = profile?.role === 'admin' ? '/admin/dashboard' : '/owner/dashboard';
+    return <Navigate to={target} replace />;
+  }
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -33,14 +39,7 @@ export function Login() {
     }
   }
 
-  function handleQuickDemo(role) {
-    loginAsDemo(role);
-    if (role === 'admin') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/owner/dashboard');
-    }
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/50 flex items-center justify-center p-4 relative overflow-hidden">
@@ -106,37 +105,7 @@ export function Login() {
           </button>
         </form>
 
-        {/* Quick Demo Access Switcher */}
-        <div className="mt-7 pt-5 border-t border-slate-100">
-          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 text-center mb-3 font-['Inter']">
-            Instant One-Click Demo Access
-          </p>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('owner')}
-              className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-200 text-left transition-all group cursor-pointer shadow-2xs"
-            >
-              <div className="flex items-center gap-1.5 text-blue-600 font-bold text-xs mb-0.5 font-['Inter']">
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Owner Login</span>
-              </div>
-              <p className="text-[10px] text-slate-500 font-['Inter']">Front Desk & Bookings</p>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('admin')}
-              className="p-3 rounded-xl bg-slate-50 hover:bg-purple-50/70 border border-slate-200 hover:border-purple-200 text-left transition-all group cursor-pointer shadow-2xs"
-            >
-              <div className="flex items-center gap-1.5 text-purple-600 font-bold text-xs mb-0.5 font-['Inter']">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Admin Login</span>
-              </div>
-              <p className="text-[10px] text-slate-500 font-['Inter']">Floors, Rooms & Settings</p>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

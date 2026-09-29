@@ -60,7 +60,7 @@ export function AppRoutes() {
       </Route>
 
       {/* Default Catch-all Redirect */}
-      <Route path="*" element={<Navigate to="/owner/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
