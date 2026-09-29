@@ -45,17 +45,19 @@ export function OwnerRevenue() {
       {/* Header Block with Title and Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
-              <span className="material-symbols-outlined text-xl">trending_up</span>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
+              <span className="material-symbols-outlined text-2xl">trending_up</span>
             </div>
-            <h1 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Revenue Analytics
-            </h1>
+            <div>
+              <h1 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Revenue & Financial Analytics
+              </h1>
+              <p className="font-['Inter'] text-xs text-slate-500 font-medium">
+                Financial insights, daily collections, and category distribution
+              </p>
+            </div>
           </div>
-          <p className="font-['Inter'] text-xs text-slate-500">
-            Financial insights, daily collections, and category distribution
-          </p>
         </div>
 
         {/* Quick Action / Date Filters */}
@@ -67,7 +69,7 @@ export function OwnerRevenue() {
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-white text-slate-800 text-xs pl-9 pr-7 py-2 rounded-xl appearance-none cursor-pointer border border-slate-200 focus:border-blue-500 focus:outline-none shadow-xs font-['Inter'] font-semibold"
+              className="bg-white text-slate-800 text-xs pl-9 pr-8 py-2.5 rounded-xl appearance-none cursor-pointer border border-slate-200/90 focus:border-blue-500 focus:outline-none shadow-xs font-['Inter'] font-black"
             >
               <option value="month">This Month (Current)</option>
               <option value="prev">Previous Month</option>
@@ -79,7 +81,7 @@ export function OwnerRevenue() {
           <button
             type="button"
             onClick={handleDownloadPL}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold font-['Inter'] px-4 py-2 rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs font-black font-['Inter'] px-4 py-2.5 rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">download</span>
             <span>Download P&L Statement</span>
@@ -88,7 +90,7 @@ export function OwnerRevenue() {
           <button
             type="button"
             onClick={handleExportCSV}
-            className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 shadow-xs transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-xs transition-all cursor-pointer active:scale-95"
             title="Export Raw CSV"
           >
             <span className="material-symbols-outlined text-base">receipt</span>
@@ -99,22 +101,22 @@ export function OwnerRevenue() {
       {/* Top 4 Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
         {/* 1. Total Revenue */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between border border-slate-200/80 hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 p-5 rounded-2xl shadow-sm hover-lift flex flex-col justify-between border border-emerald-100/90">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase font-['Inter']">
+              <span className="text-[10px] font-black text-emerald-800 tracking-wider uppercase font-['Inter']">
                 TOTAL REVENUE
               </span>
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1">
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-emerald-700 mt-1">
                 {formatINR(totalRev)}
               </span>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
               <span className="material-symbols-outlined text-2xl">currency_rupee</span>
             </div>
           </div>
           <div className="mt-3.5 flex items-center gap-1.5 text-xs font-['Inter']">
-            <span className="inline-flex items-center text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md font-bold text-[10px]">
+            <span className="inline-flex items-center text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded-md font-black text-[10px]">
               <span className="material-symbols-outlined text-xs mr-0.5">trending_up</span>Live
             </span>
             <span className="text-slate-500 font-medium">Verified billing balance</span>
@@ -122,74 +124,74 @@ export function OwnerRevenue() {
         </div>
 
         {/* 2. Total Checkouts */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between border border-slate-200/80 hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/40 p-5 rounded-2xl shadow-sm hover-lift flex flex-col justify-between border border-blue-100/90">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase font-['Inter']">
+              <span className="text-[10px] font-black text-blue-900/70 tracking-wider uppercase font-['Inter']">
                 TOTAL CHECKOUTS
               </span>
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-                {totalStays} <span className="text-xs text-slate-400 font-normal">Stays</span>
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                {totalStays} <span className="text-xs text-slate-500 font-semibold">Stays</span>
               </span>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
               <span className="material-symbols-outlined text-2xl">hotel</span>
             </div>
           </div>
           <div className="mt-3.5 flex items-center gap-1.5 text-xs font-['Inter']">
-            <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md text-[10px] font-bold">
+            <span className="text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded-md text-[10px] font-black">
               100% Settled
             </span>
-            <span className="text-slate-500">• 0 pending billing</span>
+            <span className="text-slate-500 font-medium">• 0 pending billing</span>
           </div>
         </div>
 
         {/* 3. Avg Revenue / Stay */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between border border-slate-200/80 hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-white via-purple-50/30 to-indigo-50/40 p-5 rounded-2xl shadow-sm hover-lift flex flex-col justify-between border border-purple-100/90">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase font-['Inter']">
+              <span className="text-[10px] font-black text-purple-950/70 tracking-wider uppercase font-['Inter']">
                 AVG. REVENUE / STAY
               </span>
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {formatINR(avgRev)}
               </span>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/25">
               <span className="material-symbols-outlined text-2xl">query_stats</span>
             </div>
           </div>
           <div className="mt-3.5 flex items-center gap-1.5 text-xs font-['Inter']">
-            <span className="text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md text-[10px] font-bold">
+            <span className="text-blue-800 bg-white border border-blue-200 px-2 py-0.5 rounded-md text-[10px] font-black">
               ADR Metric
             </span>
-            <span className="text-slate-500">Per registered checkout</span>
+            <span className="text-slate-500 font-medium">Per registered checkout</span>
           </div>
         </div>
 
         {/* 4. Settlement Currency */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between border border-slate-200/80 hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-white via-amber-50/30 to-orange-50/40 p-5 rounded-2xl shadow-sm hover-lift flex flex-col justify-between border border-amber-100/90">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase font-['Inter']">
+              <span className="text-[10px] font-black text-amber-950/70 tracking-wider uppercase font-['Inter']">
                 SETTLEMENT CURRENCY
               </span>
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 INR (₹)
               </span>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/25">
               <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
             </div>
           </div>
           <div className="mt-3.5 flex items-center justify-between text-[11px] font-['Inter']">
-            <span className="text-emerald-700 font-bold flex items-center gap-1">
+            <span className="text-emerald-800 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />UPI / Digital
             </span>
-            <span className="text-blue-700 font-bold flex items-center gap-1">
+            <span className="text-blue-800 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Cash Desk
             </span>
-            <span className="text-purple-700 font-bold flex items-center gap-1">
+            <span className="text-purple-800 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />POS Cards
             </span>
           </div>

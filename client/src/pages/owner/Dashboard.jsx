@@ -106,49 +106,52 @@ export function OwnerDashboard() {
       {/* Primary Metric Stats Grid (4 Cards) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
         {/* Total Rooms */}
-        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-slate-200/80">
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 font-['Inter']">
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/40 rounded-2xl p-5 shadow-sm hover-lift flex items-center justify-between border border-blue-100/90 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all" />
+          <div className="flex flex-col relative z-10">
+            <span className="text-[11px] font-extrabold text-blue-900/70 uppercase tracking-wider mb-1 font-['Inter']">
               Total Rooms
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-slate-900">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-slate-900">
               {totalRooms}
             </span>
             <span className="text-xs text-slate-500 mt-1 font-['Inter'] font-medium">Full property capacity</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 relative z-10 group-hover:scale-105 transition-transform">
             <span className="material-symbols-outlined text-2xl">bed</span>
           </div>
         </div>
 
         {/* Available */}
-        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-emerald-100/90 bg-gradient-to-br from-white to-emerald-50/20">
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-1 font-['Inter']">
+        <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 rounded-2xl p-5 shadow-sm hover-lift flex items-center justify-between border border-emerald-100/90 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all" />
+          <div className="flex flex-col relative z-10">
+            <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider mb-1 font-['Inter']">
               Available
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-emerald-700">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-emerald-700">
               {availableRooms}
             </span>
-            <span className="text-xs text-emerald-700 mt-1 flex items-center gap-1 font-['Inter'] font-medium">
+            <span className="text-xs text-emerald-700 mt-1 flex items-center gap-1 font-['Inter'] font-semibold">
               <span className="material-symbols-outlined text-xs">done_all</span> Ready for walk-ins
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shadow-xs">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-500 via-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/25 relative z-10 group-hover:scale-105 transition-transform">
             <span className="material-symbols-outlined text-2xl">check_circle</span>
           </div>
         </div>
 
         {/* Occupied */}
-        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-rose-100/90 bg-gradient-to-br from-white to-rose-50/20">
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-1 font-['Inter']">
+        <div className="bg-gradient-to-br from-white via-rose-50/30 to-amber-50/30 rounded-2xl p-5 shadow-sm hover-lift flex items-center justify-between border border-rose-100/90 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition-all" />
+          <div className="flex flex-col relative z-10">
+            <span className="text-[11px] font-extrabold text-rose-800 uppercase tracking-wider mb-1 font-['Inter']">
               Occupied
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-rose-700">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-rose-700">
               {occupiedRooms}
             </span>
-            <span className="text-xs text-rose-700 mt-1 flex items-center gap-1 font-['Inter'] font-medium">
+            <span className="text-xs text-rose-700 mt-1 flex items-center gap-1 font-['Inter'] font-semibold">
               <span className="material-symbols-outlined text-xs">lock</span>{' '}
               {occupiedRooms === 0
                 ? 'No active stays'
@@ -157,25 +160,26 @@ export function OwnerDashboard() {
                 : `${occupiedRooms} Active guest stays`}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-center text-rose-700 shadow-xs">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-rose-500 via-rose-600 to-amber-600 flex items-center justify-center text-white shadow-md shadow-rose-500/25 relative z-10 group-hover:scale-105 transition-transform">
             <span className="material-symbols-outlined text-2xl">meeting_room</span>
           </div>
         </div>
 
         {/* Occupancy Rate */}
-        <div className="bg-white rounded-2xl p-5 shadow-xs flex items-center justify-between border border-purple-100/90 bg-gradient-to-br from-white to-purple-50/20">
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-1 font-['Inter']">
+        <div className="bg-gradient-to-br from-white via-purple-50/30 to-indigo-50/30 rounded-2xl p-5 shadow-sm hover-lift flex items-center justify-between border border-purple-100/90 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all" />
+          <div className="flex flex-col relative z-10">
+            <span className="text-[11px] font-extrabold text-purple-800 uppercase tracking-wider mb-1 font-['Inter']">
               Occupancy Rate
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-extrabold text-purple-700">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-black text-purple-700">
               {occupancyRate}%
             </span>
-            <span className="text-xs text-purple-700 mt-1 flex items-center gap-1 font-['Inter'] font-medium">
+            <span className="text-xs text-purple-700 mt-1 flex items-center gap-1 font-['Inter'] font-semibold">
               <span className="material-symbols-outlined text-xs">trending_up</span> {occupiedRooms > 0 ? 'Live occupancy' : 'Property vacant'}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-200/80 flex items-center justify-center text-purple-700 shadow-xs">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-purple-600 via-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/25 relative z-10 group-hover:scale-105 transition-transform">
             <span className="material-symbols-outlined text-2xl">insights</span>
           </div>
         </div>
@@ -183,53 +187,53 @@ export function OwnerDashboard() {
 
       {/* Secondary Operational Row (3 Cards) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs hover-lift flex items-center justify-between border border-slate-200/90 bg-gradient-to-r from-white to-blue-50/20">
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 font-['Inter']">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 font-['Inter']">
               Today Check-in
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-blue-600">
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-blue-600">
                 {stats.today_check_ins}
               </span>
-              <span className="text-xs text-slate-500 font-['Inter']">Guest lodged</span>
+              <span className="text-xs text-slate-500 font-['Inter'] font-semibold">Guest lodged</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
             <span className="material-symbols-outlined text-xl">login</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs hover-lift flex items-center justify-between border border-slate-200/90 bg-gradient-to-r from-white to-amber-50/20">
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 font-['Inter']">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 font-['Inter']">
               Today Check-out
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-amber-600">
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-amber-600">
                 {stats.today_check_outs}
               </span>
-              <span className="text-xs text-slate-500 font-['Inter']">Pending departures</span>
+              <span className="text-xs text-slate-500 font-['Inter'] font-semibold">Pending departures</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/20">
             <span className="material-symbols-outlined text-xl">logout</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between border border-slate-200/80">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs hover-lift flex items-center justify-between border border-slate-200/90 bg-gradient-to-r from-white to-emerald-50/20">
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1 font-['Inter']">
+            <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider mb-1 font-['Inter']">
               Today Revenue
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-emerald-600">
+              <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-emerald-600">
                 {formatINR(stats.today_revenue ?? 0)}
               </span>
-              <span className="text-xs text-slate-500 font-['Inter']">Cash / UPI</span>
+              <span className="text-xs text-slate-500 font-['Inter'] font-semibold">Cash / UPI</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shadow-emerald-500/20">
             <span className="material-symbols-outlined text-xl">currency_rupee</span>
           </div>
         </div>
@@ -310,39 +314,43 @@ export function OwnerDashboard() {
                 return (
                   <div
                     key={room.id}
-                    className={`bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden border ${
+                    className={`bg-white rounded-2xl p-4 sm:p-5 shadow-xs hover-lift flex flex-col justify-between relative overflow-hidden border transition-all duration-200 ${
                       isOccupied
-                        ? 'border-rose-200/90 bg-gradient-to-b from-white to-rose-50/20'
+                        ? 'border-rose-200/90 bg-gradient-to-b from-white via-rose-50/10 to-rose-50/30 shadow-rose-500/5'
                         : isMaintenance
-                        ? 'border-amber-200/90 bg-gradient-to-b from-white to-amber-50/20'
-                        : 'border-emerald-200/80 bg-gradient-to-b from-white to-emerald-50/20'
+                        ? 'border-amber-200/90 bg-gradient-to-b from-white via-amber-50/10 to-amber-50/30 shadow-amber-500/5'
+                        : 'border-emerald-200/90 bg-gradient-to-b from-white via-emerald-50/10 to-emerald-50/30 shadow-emerald-500/5'
                     }`}
                   >
-                    {/* Top Status Border Strip */}
+                    {/* Top Status Gradient Strip */}
                     <div
-                      className={`absolute top-0 left-0 right-0 h-1.5 ${
-                        isOccupied ? 'bg-rose-500' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'
+                      className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${
+                        isOccupied
+                          ? 'from-rose-500 via-pink-500 to-rose-600'
+                          : isMaintenance
+                          ? 'from-amber-500 via-orange-500 to-amber-600'
+                          : 'from-emerald-500 via-teal-500 to-emerald-600'
                       }`}
                     />
 
                     <div>
                       {/* Room Header & Status */}
-                      <div className="flex items-start justify-between mb-2.5 pt-0.5">
+                      <div className="flex items-start justify-between mb-3 pt-1">
                         <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase block font-['Inter']">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase block font-['Inter'] tracking-widest">
                             ROOM
                           </span>
-                          <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-slate-900 tracking-tight">
+                          <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-slate-900 tracking-tight">
                             {room.room_number}
                           </span>
                         </div>
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-['Inter'] shadow-2xs ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider font-['Inter'] shadow-xs ${
                             isOccupied
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200/90'
                               : isMaintenance
-                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200/90'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200/90'
                           }`}
                         >
                           <span
@@ -355,75 +363,75 @@ export function OwnerDashboard() {
                       </div>
 
                       {/* Specs & Pricing */}
-                      <div className="flex items-center justify-between py-1.5 border-y border-slate-100">
+                      <div className="flex items-center justify-between py-2 border-y border-slate-100/90">
                         <span className="text-xs font-bold text-slate-800 font-['Inter']">
                           {categoryName}
                         </span>
                         <div className="text-right">
-                          <span className="text-sm font-extrabold text-slate-900 font-mono">
+                          <span className="text-sm font-black text-slate-900 font-mono">
                             {formatINR(basePrice)}
                           </span>
-                          <span className="text-[9px] text-slate-400 block font-['Inter'] font-semibold uppercase">
-                            / 24h
+                          <span className="text-[9px] text-slate-400 block font-['Inter'] font-extrabold uppercase">
+                            / 24 HOURS
                           </span>
                         </div>
                       </div>
 
                       {/* Micro Tags */}
-                      <div className="flex flex-wrap items-center gap-1.5 my-2.5">
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold font-['Inter']">
+                      <div className="flex flex-wrap items-center gap-1.5 my-3">
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-bold font-['Inter']">
                           Max {room.room_categories?.max_occupancy || room.room_categories?.max_persons || 2}
                         </span>
                         {categoryName.toLowerCase().includes('ac') && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold font-['Inter']">
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-extrabold font-['Inter'] border border-blue-200/60">
                             ✓ AC
                           </span>
                         )}
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-['Inter']">
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-medium font-['Inter']">
                           ✓ Attached Bath
                         </span>
                       </div>
 
                       {/* Status Information Display */}
                       {isOccupied && activeBooking ? (
-                        <div className="bg-rose-50 rounded-xl p-2.5 mt-2 border border-rose-200/80">
-                          <span className="text-[9px] font-bold text-rose-700 uppercase block font-['Inter'] tracking-wider">
+                        <div className="bg-gradient-to-r from-rose-50 to-pink-50/50 rounded-xl p-2.5 mt-2 border border-rose-200/90 shadow-2xs">
+                          <span className="text-[9px] font-black text-rose-800 uppercase block font-['Inter'] tracking-wider">
                             ACTIVE GUEST
                           </span>
                           <div className="flex items-center justify-between text-xs mt-0.5 font-['Inter']">
-                            <span className="text-slate-900 font-bold truncate max-w-[140px]">
+                            <span className="text-slate-900 font-extrabold truncate max-w-[140px]">
                               {activeBooking.customers?.full_name || 'Guest'}
                             </span>
-                            <span className="text-rose-700 text-[10px] font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-rose-200">
+                            <span className="text-rose-700 text-[10px] font-mono font-black bg-white px-2 py-0.5 rounded-md border border-rose-200 shadow-2xs">
                               {activeBooking.check_in ? new Date(activeBooking.check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'In Stay'}
                             </span>
                           </div>
                         </div>
                       ) : isMaintenance ? (
-                        <div className="bg-amber-50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-amber-200/80">
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50/50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-amber-200/90 shadow-2xs">
                           <div className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-amber-700 text-base">engineering</span>
-                            <span className="text-xs text-amber-800 font-bold font-['Inter']">Under Maintenance</span>
+                            <span className="text-xs text-amber-900 font-bold font-['Inter']">Under Maintenance</span>
                           </div>
                           <button
                             type="button"
                             onClick={(e) => handleReleaseMaintenance(e, room)}
-                            className="text-[10px] font-bold text-emerald-700 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
+                            className="text-[10px] font-black text-emerald-700 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 transition-all cursor-pointer shadow-xs active:scale-95"
                           >
                             Release
                           </button>
                         </div>
                       ) : (
-                        <div className="bg-emerald-50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-emerald-200/80">
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50/50 rounded-xl p-2.5 mt-2 flex items-center justify-between border border-emerald-200/90 shadow-2xs">
                           <div className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                            <span className="text-xs text-emerald-800 font-bold font-['Inter']">Vacant & Clean</span>
+                            <span className="text-xs text-emerald-900 font-bold font-['Inter']">Vacant & Clean</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={(e) => handleSetMaintenance(e, room)}
-                              className="text-[10px] font-bold text-amber-800 bg-white hover:bg-amber-50 px-2 py-1 rounded-md border border-amber-200 transition-colors cursor-pointer shadow-2xs"
+                              className="text-[10px] font-bold text-amber-800 bg-white hover:bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 transition-all cursor-pointer shadow-xs active:scale-95"
                               title="Put room into maintenance"
                             >
                               Maintenance

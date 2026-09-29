@@ -123,138 +123,138 @@ export function OwnerRooms() {
       {/* Top Operational Context & KPIs Banner */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
             <span className="material-symbols-outlined text-2xl">bed</span>
           </div>
           <div>
-            <h1 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Room Management
+            <h1 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Room Management Matrix
             </h1>
-            <p className="font-['Inter'] text-xs text-slate-500">
+            <p className="font-['Inter'] text-xs text-slate-500 font-medium">
               Select a floor to view and manage room status in real-time
             </p>
           </div>
         </div>
 
         {/* Quick Status Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border border-slate-200/80 shadow-xs self-start lg:self-auto overflow-x-auto max-w-full">
+        <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200/90 shadow-xs self-start lg:self-auto overflow-x-auto max-w-full">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-['Inter'] transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-black font-['Inter'] transition-all flex items-center gap-2 cursor-pointer ${
               statusFilter === 'all'
-                ? 'bg-blue-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
             <span>All</span>
-            <span className="bg-blue-700/60 text-white px-1.5 py-0.5 rounded text-[10px]">{totalCount}</span>
+            <span className="bg-white/20 text-white px-2 py-0.5 rounded-md text-[10px] font-mono">{totalCount}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setStatusFilter('available')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-['Inter'] transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-black font-['Inter'] transition-all flex items-center gap-2 cursor-pointer ${
               statusFilter === 'available'
-                ? 'bg-emerald-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Available</span>
-            <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px]">{availCount}</span>
+            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[10px] font-mono">{availCount}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setStatusFilter('occupied')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-['Inter'] transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-black font-['Inter'] transition-all flex items-center gap-2 cursor-pointer ${
               statusFilter === 'occupied'
-                ? 'bg-rose-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-500/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+            <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
             <span>Occupied</span>
-            <span className="bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[10px]">{occCount}</span>
+            <span className="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md text-[10px] font-mono">{occCount}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setStatusFilter('maintenance')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-['Inter'] transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-black font-['Inter'] transition-all flex items-center gap-2 cursor-pointer ${
               statusFilter === 'maintenance'
-                ? 'bg-amber-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
             <span>Maintenance</span>
-            <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px]">{maintCount}</span>
+            <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md text-[10px] font-mono">{maintCount}</span>
           </button>
         </div>
       </div>
 
       {/* Operational Quick Metrics Bar (4 Cards) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/40 p-4 sm:p-5 rounded-2xl border border-blue-100/90 shadow-sm hover-lift flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-500 block uppercase font-['Inter']">
+            <span className="text-[10px] font-black text-blue-900/70 block uppercase font-['Inter'] tracking-wider">
               TOTAL INVENTORY
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-slate-900 mt-0.5 block">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-slate-900 mt-0.5 block">
               {totalCount}
             </span>
-            <span className="text-xs text-slate-400 font-['Inter']">Across {floors.length} Levels</span>
+            <span className="text-xs text-slate-500 font-['Inter'] font-medium">Across {floors.length} Levels</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
             <span className="material-symbols-outlined text-2xl">domain</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 p-4 sm:p-5 rounded-2xl border border-emerald-100/90 shadow-sm hover-lift flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-emerald-600 block uppercase font-['Inter']">
+            <span className="text-[10px] font-black text-emerald-800 block uppercase font-['Inter'] tracking-wider">
               READY TO OCCUPY
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-emerald-600 mt-0.5 block">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-emerald-700 mt-0.5 block">
               {availCount}
             </span>
-            <span className="text-xs text-emerald-600 font-medium font-['Inter']">
+            <span className="text-xs text-emerald-700 font-bold font-['Inter']">
               {totalCount > 0 ? Math.round((availCount / totalCount) * 100) : 0}% Available
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
             <span className="material-symbols-outlined text-2xl">check_circle</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-gradient-to-br from-white via-rose-50/30 to-amber-50/30 p-4 sm:p-5 rounded-2xl border border-rose-100/90 shadow-sm hover-lift flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-rose-600 block uppercase font-['Inter']">
+            <span className="text-[10px] font-black text-rose-800 block uppercase font-['Inter'] tracking-wider">
               LOCKED OCCUPIED
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-rose-600 mt-0.5 block">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-rose-700 mt-0.5 block">
               {String(occCount).padStart(2, '0')}
             </span>
-            <span className="text-xs text-rose-600 font-medium font-['Inter']">In Active Stay</span>
+            <span className="text-xs text-rose-700 font-bold font-['Inter']">In Active Stay</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-rose-500/20">
             <span className="material-symbols-outlined text-2xl">person_pin_circle</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-gradient-to-br from-white via-amber-50/30 to-emerald-50/30 p-4 sm:p-5 rounded-2xl border border-emerald-100/90 shadow-sm hover-lift flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-500 block uppercase font-['Inter']">
+            <span className="text-[10px] font-black text-slate-500 block uppercase font-['Inter'] tracking-wider">
               TODAY'S RUN RATE
             </span>
-            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-extrabold text-slate-900 mt-0.5 block">
+            <span className="font-['Plus_Jakarta_Sans'] text-2xl font-black text-slate-900 mt-0.5 block">
               {formatINR(todayRunRate)}
             </span>
-            <span className="text-xs text-slate-400 font-['Inter']">Avg Tariff {formatINR(avgTariff)}</span>
+            <span className="text-xs text-slate-500 font-['Inter'] font-medium">Avg Tariff {formatINR(avgTariff)}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
             <span className="material-symbols-outlined text-2xl">payments</span>
           </div>
         </div>

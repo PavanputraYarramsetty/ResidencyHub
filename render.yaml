@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: srideviresidency
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: https://tnmmmrtnjnujefistsjm.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubW1tcnRuam51amVmaXN0c2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NTQ3NjgsImV4cCI6MjEwNDEzMDc2OH0.4qSSBxPiYJr2nEcQ2GGartkBGGrtvg4qKM23n-vEQ6k
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubW1tcnRuam51amVmaXN0c2ptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODU1NDc2OCwiZXhwIjoyMTA0MTMwNzY4fQ.kHBnxOpLI9ssYXCuNM_V6Xefy-xC9EBg5F3FHrYkqbY
+      - key: VITE_SUPABASE_URL
+        value: https://tnmmmrtnjnujefistsjm.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubW1tcnRuam51amVmaXN0c2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NTQ3NjgsImV4cCI6MjEwNDEzMDc2OH0.4qSSBxPiYJr2nEcQ2GGartkBGGrtvg4qKM23n-vEQ6k

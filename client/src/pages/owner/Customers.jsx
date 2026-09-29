@@ -36,18 +36,18 @@ export function OwnerCustomers() {
     <div className="flex flex-col w-full gap-5 sm:gap-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-            <h2 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+            <Users className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Customer Management
             </h2>
+            <p className="font-['Inter'] text-xs text-slate-500 font-medium">
+              Guest registry, previous visits, and ID verification logs
+            </p>
           </div>
-          <p className="font-['Inter'] text-xs text-slate-500">
-            Guest registry, previous visits, and ID verification logs
-          </p>
         </div>
 
         {/* Search */}
@@ -60,7 +60,7 @@ export function OwnerCustomers() {
             placeholder="Search by name or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white hover:bg-slate-50 focus:bg-white text-slate-800 placeholder-slate-400 text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition-all shadow-xs"
+            className="w-full bg-white hover:bg-slate-50 focus:bg-white text-slate-900 placeholder-slate-400 text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition-all shadow-xs font-['Inter'] font-semibold"
           />
         </div>
       </div>

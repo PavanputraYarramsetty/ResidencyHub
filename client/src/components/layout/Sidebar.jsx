@@ -73,7 +73,7 @@ export function Sidebar({ isOpen, onClose }) {
       >
         <div className="flex flex-col pt-4">
           {/* Nav Links */}
-          <nav className="px-3 py-1 flex flex-col gap-1">
+          <nav className="px-3 py-3 flex flex-col gap-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -84,15 +84,15 @@ export function Sidebar({ isOpen, onClose }) {
                     if (window.innerWidth < 1024) onClose();
                   }}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-['Inter'] text-xs font-semibold transition-all ${
+                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-['Inter'] text-xs transition-all duration-200 group ${
                       isActive
-                        ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/20'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white font-bold shadow-md shadow-blue-600/25 translate-x-0.5'
+                        : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900 font-semibold'
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="text-xs">{item.name}</span>
+                  <Icon className="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                  <span className="text-xs tracking-tight">{item.name}</span>
                 </NavLink>
               );
             })}
@@ -100,18 +100,18 @@ export function Sidebar({ isOpen, onClose }) {
         </div>
 
         {/* View Portal Role Switcher */}
-        <div className="p-3">
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 shadow-xs">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 font-['Inter']">
+        <div className="p-3.5">
+          <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block mb-2 font-['Inter']">
               VIEW PORTAL ROLE
             </span>
-            <div className="grid grid-cols-2 gap-1 bg-white p-1 rounded-lg border border-slate-200">
+            <div className="grid grid-cols-2 gap-1.5 bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs">
               <button
                 type="button"
                 onClick={() => handleSwitchRole('owner')}
-                className={`py-1.5 px-2 rounded-md text-[11px] font-bold text-center transition-colors cursor-pointer ${
+                className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold text-center transition-all cursor-pointer ${
                   !isAdmin
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
@@ -120,9 +120,9 @@ export function Sidebar({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={() => handleSwitchRole('admin')}
-                className={`py-1.5 px-2 rounded-md text-[11px] font-bold text-center transition-colors cursor-pointer ${
+                className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold text-center transition-all cursor-pointer ${
                   isAdmin
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
