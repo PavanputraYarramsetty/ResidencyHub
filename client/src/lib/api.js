@@ -8,9 +8,11 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const role = localStorage.getItem('demo_role') || 'owner';
-  config.headers['x-demo-role'] = role;
-  config.headers.Authorization = `Bearer mock-token-${role}`;
+  const role = sessionStorage.getItem('demo_role') || localStorage.getItem('demo_role');
+  if (role) {
+    config.headers['x-demo-role'] = role;
+    config.headers.Authorization = `Bearer mock-token-${role}`;
+  }
   return config;
 });
 

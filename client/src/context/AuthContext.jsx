@@ -27,8 +27,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Only restore session if user previously logged in
-    const savedDemoRole = localStorage.getItem('demo_role');
+    // Clear stale demo_role from localStorage so fresh tab visits default to /login
+    localStorage.removeItem('demo_role');
+
+    // Only restore session if user previously logged in during current session
+    const savedDemoRole = sessionStorage.getItem('demo_role');
     if (savedDemoRole && DEMO_PROFILES[savedDemoRole]) {
       const demoProf = DEMO_PROFILES[savedDemoRole];
       setUser({ id: demoProf.id, email: `${savedDemoRole}@sridevi.com` });
@@ -58,7 +61,7 @@ export function AuthProvider({ children }) {
 
   function loginAsDemo(role = 'owner') {
     const demoProf = DEMO_PROFILES[role] || DEMO_PROFILES.owner;
-    localStorage.setItem('demo_role', role);
+    sessionStorage.setItem('demo_role', role);
     setUser({ id: demoProf.id, email: `${role}@sridevi.com` });
     setProfile(demoProf);
     setSession({ access_token: `mock-token-${role}`, user: demoProf });
@@ -67,6 +70,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
+    sessionStorage.removeItem('demo_role');
     localStorage.removeItem('demo_role');
     setUser(null);
     setProfile(null);

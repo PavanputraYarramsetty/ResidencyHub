@@ -66,17 +66,18 @@ export function Login() {
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1 font-['Inter']">
               Email Address
             </label>
             <input
               type="email"
-              placeholder="admin@sridevi.com or owner@sridevi.com"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="new-email"
               className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 focus:outline-none transition-all shadow-xs"
             />
           </div>
@@ -87,10 +88,11 @@ export function Login() {
             </label>
             <input
               type="password"
-              placeholder="••••••••••••"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="new-password"
               className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 focus:outline-none transition-all shadow-xs"
             />
           </div>

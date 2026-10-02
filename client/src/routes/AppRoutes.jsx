@@ -27,6 +27,9 @@ import AdminSettings from '../pages/admin/Settings';
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Default Root Route */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
       {/* Public Auth Route */}
       <Route path="/login" element={<Login />} />
 
