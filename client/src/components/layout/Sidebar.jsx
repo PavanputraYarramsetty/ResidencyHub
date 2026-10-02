@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
@@ -11,13 +11,11 @@ import {
   Settings,
   Layers,
   ShieldCheck,
-  Building,
   Tags,
 } from 'lucide-react';
 
 export function Sidebar({ isOpen, onClose }) {
-  const { isAdmin, profile, loginAsDemo } = useAuth();
-  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
 
   const ownerNavItems = [
     { name: 'Dashboard', path: '/owner/dashboard', icon: LayoutDashboard },
@@ -40,20 +38,6 @@ export function Sidebar({ isOpen, onClose }) {
   ];
 
   const navItems = isAdmin ? adminNavItems : ownerNavItems;
-
-  const initials = profile?.full_name
-    ? profile.full_name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : 'FO';
-
-  function handleSwitchRole(role) {
-    loginAsDemo(role);
-    navigate(role === 'admin' ? '/admin/dashboard' : '/owner/dashboard');
-  }
 
   return (
     <>
@@ -97,39 +81,6 @@ export function Sidebar({ isOpen, onClose }) {
               );
             })}
           </nav>
-        </div>
-
-        {/* View Portal Role Switcher */}
-        <div className="p-3.5">
-          <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block mb-2 font-['Inter']">
-              VIEW PORTAL ROLE
-            </span>
-            <div className="grid grid-cols-2 gap-1.5 bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => handleSwitchRole('owner')}
-                className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold text-center transition-all cursor-pointer ${
-                  !isAdmin
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                Owner
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSwitchRole('admin')}
-                className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold text-center transition-all cursor-pointer ${
-                  isAdmin
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                Admin
-              </button>
-            </div>
-          </div>
         </div>
       </aside>
     </>
