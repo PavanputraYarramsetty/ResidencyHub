@@ -138,3 +138,70 @@
     display: none !important;
   }
 }
+
+/* Animated Wave Floating Label Inputs */
+.form-control {
+  position: relative;
+  margin: 24px 0 32px;
+  width: 100%;
+}
+
+.form-control input {
+  background-color: transparent;
+  border: 0;
+  border-bottom: 2px rgba(255, 255, 255, 0.4) solid;
+  display: block;
+  width: 100%;
+  padding: 12px 0;
+  font-size: 16px;
+  color: #fff;
+  transition: border-bottom-color 0.25s ease;
+}
+
+.form-control input:focus,
+.form-control input:valid,
+.form-control input:not(:placeholder-shown) {
+  outline: 0;
+  border-bottom-color: lightblue;
+}
+
+.form-control label {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  pointer-events: none;
+}
+
+.form-control label span {
+  display: inline-block;
+  font-size: 15px;
+  min-width: 5px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.form-control input:focus + label span,
+.form-control input:valid + label span,
+.form-control input:not(:placeholder-shown) + label span {
+  color: lightblue;
+  transform: translateY(-28px);
+}
+
+/* Light mode support */
+.light .form-control input {
+  border-bottom-color: #cbd5e1;
+  color: #0f172a;
+}
+.light .form-control label span {
+  color: #64748b;
+}
+.light .form-control input:focus,
+.light .form-control input:valid,
+.light .form-control input:not(:placeholder-shown) {
+  border-bottom-color: #2563eb;
+}
+.light .form-control input:focus + label span,
+.light .form-control input:valid + label span,
+.light .form-control input:not(:placeholder-shown) + label span {
+  color: #2563eb;
+}
